@@ -1,0 +1,20 @@
+# AI Agent directory
+.agents/
+
+# Runtime data must live in OJS files_dir/zalo_notification.
+debug.txt
+debug.txt.*
+zalo_notification_activity.log
+zalo_notification_activity.log.*
+deadline_scan.lock
+.activity_retention_check
+
+# Local recovery/debug artifacts.
+extract.txt
+recovered_diff.txt
+extract_diff.php
+parse_diff.php
+
+.env
+docs
+_doc_work

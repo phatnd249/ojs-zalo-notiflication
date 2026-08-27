@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE scheduled_tasks SYSTEM "../../../lib/pkp/dtd/scheduledTasks.dtd">
+<scheduled_tasks>
+	<task class="plugins.generic.zaloNotification.tasks.ZaloOutboxTask">
+		<descr>Send queued Zalo notifications and retry temporary failures.</descr>
+		<frequency minute="*"/>
+	</task>
+	<task class="plugins.generic.zaloNotification.tasks.ZaloOverdueReviewTask">
+		<descr>Scan overdue review assignments for enabled journals.</descr>
+		<frequency minute="0"/>
+	</task>
+</scheduled_tasks>

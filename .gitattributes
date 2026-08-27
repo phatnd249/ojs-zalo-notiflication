@@ -1,0 +1,14 @@
+/.gitignore export-ignore
+/.gitattributes export-ignore
+/.agents export-ignore
+/.codex export-ignore
+/debug.txt export-ignore
+/debug.txt.* export-ignore
+/zalo_notification_activity.log export-ignore
+/zalo_notification_activity.log.* export-ignore
+/deadline_scan.lock export-ignore
+/.activity_retention_check export-ignore
+/extract.txt export-ignore
+/recovered_diff.txt export-ignore
+/extract_diff.php export-ignore
+/parse_diff.php export-ignore
