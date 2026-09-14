@@ -302,13 +302,14 @@ class EditorialNotificationHandler extends StageChangeHandler
                             'EDITOR_DECISION_AUTHOR', self::getSubmissionContextId($submission)
                         );
                     } else {
-                        $zaloStatus = 'SKIPPED (Tac gia chua co SDT)';
+                        $zaloStatus = 'SKIPPED (Tác giả chưa có SĐT)';
                     }
                 }
 
                 ActivityLogger::log(
                     ActivityLogger::TYPE_DECISION,
-                    ActivityLogger::LEVEL_INFO,
+                    strpos($zaloStatus, 'Thành công') !== false || strpos($zaloStatus, 'Đã xếp hàng') === 0 || strpos($zaloStatus, 'SKIPPED') === 0
+                        ? ActivityLogger::LEVEL_INFO : ActivityLogger::LEVEL_WARNING,
                     'System',
                     $submissionId,
                     $title,

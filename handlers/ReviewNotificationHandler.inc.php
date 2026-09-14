@@ -376,7 +376,7 @@ class ReviewNotificationHandler extends StageChangeHandler
                 'reviewerName' => $reviewerName,
                 'deadline' => $deadline,
                 'responseDeadline' => $responseDeadline,
-                'daysLeft' => 'Moi gui loi moi',
+                'daysLeft' => 'Mới gửi lời mời',
                 'round' => $round ?: 1,
                 'timestamp' => date('d/m/Y H:i:s')
                 ]);
@@ -406,7 +406,7 @@ class ReviewNotificationHandler extends StageChangeHandler
                         ActivityLogger::logReviewRequest($submissionId, $title, $reviewerName, $deadline, $reviewerStatus, $reviewerKey);
                         self::writeDebug("handleReviewDueDatesSet #{$submissionId}: Gui reviewer review request reviewId={$uniqueSuffix} -- {$reviewerStatus}");
                     } else {
-                        ActivityLogger::logReviewRequest($submissionId, $title, $reviewerName, $deadline, 'SKIPPED (Reviewer chua co SDT)', $reviewerKey);
+                        ActivityLogger::logReviewRequest($submissionId, $title, $reviewerName, $deadline, 'SKIPPED (Phản biện viên chưa có SĐT)', $reviewerKey);
                     }
                 } else {
                     ActivityLogger::logReviewRequest($submissionId, $title, $reviewerName, $deadline, 'SKIPPED', $reviewerKey);
@@ -529,14 +529,14 @@ class ReviewNotificationHandler extends StageChangeHandler
 
             if (!$reviewAssignment) {
                 $status = $decline ? 'DECLINED' : 'ACCEPTED';
-                self::writeDebug("handleReviewerResponseFromHook #{$submissionId}: Khong tim thay reviewAssignment cho reviewerEmail={$reviewerEmail}, status={$status}");
-                ActivityLogger::logError('handleReviewerResponseFromHook', "Khong tim thay reviewAssignment cho reviewerEmail={$reviewerEmail}, status={$status}", $submissionId);
+                self::writeDebug("handleReviewerResponseFromHook #{$submissionId}: Không tìm thấy reviewAssignment cho reviewerEmail={$reviewerEmail}, status={$status}");
+                ActivityLogger::logError('handleReviewerResponseFromHook', "Không tìm thấy reviewAssignment cho reviewerEmail={$reviewerEmail}, status={$status}", $submissionId);
                 return;
             }
 
             self::handleReviewerResponse($reviewAssignment, $submission, $decline);
         } catch (\Throwable $e) {
-            self::writeDebug("LOI handleReviewerResponseFromHook: " . $e->getMessage() . " [" . $e->getFile() . ":" . $e->getLine() . "]");
+            self::writeDebug("LỖI handleReviewerResponseFromHook: " . $e->getMessage() . " [" . $e->getFile() . ":" . $e->getLine() . "]");
             ActivityLogger::logError('handleReviewerResponseFromHook', $e->getMessage(), isset($submission) && $submission ? (int) $submission->getId() : 0, $e);
         }
     }
@@ -573,13 +573,13 @@ class ReviewNotificationHandler extends StageChangeHandler
             $title = $publication ? strip_tags($publication->getLocalizedTitle() ?? "ID #{$submissionId}") : "ID #{$submissionId}";
             $reviewer = \DAORegistry::getDAO('UserDAO')->getById($reviewerId);
             $reviewerName = $reviewer ? $reviewer->getFullName() : "Reviewer #{$reviewerId}";
-            $statusText = $status === 'reinstated' ? 'Khoi phuc phan cong phan bien' : 'Huy/xoa phan cong phan bien';
+            $statusText = $status === 'reinstated' ? 'Khôi phục phân công phản biện' : 'Huỷ/xoá phân công phản biện';
             $deadline = self::formatReviewDate(method_exists($reviewAssignment, 'getDateDue') ? $reviewAssignment->getDateDue() : '');
 
             ActivityLogger::logReviewResponse($submissionId, $title, $reviewerName, $statusText, $deadline, 'LOG_ONLY', $uniqueKey);
             self::writeDebug("handleReviewAssignmentStatusChanged #{$submissionId}: {$statusText} reviewerId={$reviewerId}");
         } catch (\Throwable $e) {
-            self::writeDebug("LOI handleReviewAssignmentStatusChanged: " . $e->getMessage());
+            self::writeDebug("LỖI handleReviewAssignmentStatusChanged: " . $e->getMessage());
             ActivityLogger::logError('handleReviewAssignmentStatusChanged', $e->getMessage(), 0, $e);
         }
     }

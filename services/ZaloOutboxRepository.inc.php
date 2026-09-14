@@ -162,8 +162,6 @@ class ZaloOutboxRepository
         if ($attempts >= self::MAX_ATTEMPTS) {
             Capsule::table(self::TABLE)->where('outbox_id', $outboxId)->update([
                 'status' => 'failed',
-                'message_text' => '',
-                'recipients_json' => '[]',
                 'locked_at' => null,
                 'last_error' => $error,
                 'updated_at' => $now,
@@ -179,6 +177,121 @@ class ZaloOutboxRepository
             'last_error' => $error,
             'updated_at' => $now,
         ]);
+    }
+
+    public static function getOutboxEntries(int $contextId, ?string $statusFilter = null, int $limit = 100): array
+    {
+        if (!self::ensureSchema()) {
+            return [];
+        }
+
+        $query = Capsule::table(self::TABLE)
+            ->where('context_id', $contextId);
+
+        if ($statusFilter !== null && $statusFilter !== '' && $statusFilter !== 'all') {
+            if ($statusFilter === 'active_queue') {
+                $query->whereIn('status', ['pending', 'retry', 'processing']);
+            } else {
+                $query->where('status', $statusFilter);
+            }
+        }
+
+        $rows = $query->orderBy('outbox_id', 'desc')
+            ->limit(max(1, min(500, $limit)))
+            ->get();
+
+        $results = [];
+        foreach ($rows as $row) {
+            $recipients = json_decode((string) $row->recipients_json, true);
+            $results[] = [
+                'outbox_id' => (int) $row->outbox_id,
+                'context_id' => (int) $row->context_id,
+                'event_type' => (string) $row->event_type,
+                'dedupe_key' => (string) $row->dedupe_key,
+                'message_text' => (string) $row->message_text,
+                'recipients' => is_array($recipients) ? $recipients : [],
+                'recipient_count' => is_array($recipients) ? count($recipients) : 0,
+                'status' => (string) $row->status,
+                'attempts' => (int) $row->attempts,
+                'max_attempts' => self::MAX_ATTEMPTS,
+                'available_at' => (string) $row->available_at,
+                'locked_at' => $row->locked_at ? (string) $row->locked_at : null,
+                'sent_at' => $row->sent_at ? (string) $row->sent_at : null,
+                'last_error' => $row->last_error ? (string) $row->last_error : null,
+                'created_at' => (string) $row->created_at,
+                'updated_at' => (string) $row->updated_at,
+            ];
+        }
+
+        return $results;
+    }
+
+    public static function retryItem(int $outboxId, int $contextId): bool
+    {
+        if (!self::ensureSchema()) {
+            return false;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $affected = Capsule::table(self::TABLE)
+            ->where('outbox_id', $outboxId)
+            ->where('context_id', $contextId)
+            ->update([
+                'status' => 'pending',
+                'attempts' => 0,
+                'available_at' => $now,
+                'locked_at' => null,
+                'last_error' => null,
+                'updated_at' => $now,
+            ]);
+
+        return $affected > 0;
+    }
+
+    public static function retryAllFailed(int $contextId): int
+    {
+        if (!self::ensureSchema()) {
+            return 0;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        return Capsule::table(self::TABLE)
+            ->where('context_id', $contextId)
+            ->whereIn('status', ['failed', 'retry'])
+            ->update([
+                'status' => 'pending',
+                'attempts' => 0,
+                'available_at' => $now,
+                'locked_at' => null,
+                'last_error' => null,
+                'updated_at' => $now,
+            ]);
+    }
+
+    public static function deleteItem(int $outboxId, int $contextId): bool
+    {
+        if (!self::ensureSchema()) {
+            return false;
+        }
+
+        $deleted = Capsule::table(self::TABLE)
+            ->where('outbox_id', $outboxId)
+            ->where('context_id', $contextId)
+            ->delete();
+
+        return $deleted > 0;
+    }
+
+    public static function clearSent(int $contextId): int
+    {
+        if (!self::ensureSchema()) {
+            return 0;
+        }
+
+        return Capsule::table(self::TABLE)
+            ->where('context_id', $contextId)
+            ->where('status', 'sent')
+            ->delete();
     }
 
     public static function cleanup(): int

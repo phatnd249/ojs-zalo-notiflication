@@ -12,7 +12,9 @@ $tests = [
     'reminder_deduplication_test.php',
     'gateway_response_test.php',
     'post_save_dispatcher_test.php',
+    'outbox_dashboard_test.php',
     'outbox_integration.php',
+    'activity_log_ui_test.php',
 ];
 
 foreach ($tests as $test) {

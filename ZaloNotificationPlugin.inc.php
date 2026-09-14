@@ -500,7 +500,6 @@ class ZaloNotificationPlugin extends GenericPlugin
 
         return false;
     }
-
     /**
      * Thêm các tab Activity Log và Nhắc phản biện vào Settings > Website.
      */
@@ -529,10 +528,27 @@ class ZaloNotificationPlugin extends GenericPlugin
             null,
             ['category' => 'generic', 'plugin' => $this->getName(), 'verb' => 'reviewDashboardTab']
         );
+        $zaloOutboxDashboardUrl = $dispatcher->url(
+            $request,
+            ROUTE_COMPONENT,
+            null,
+            'grid.settings.plugins.SettingsPluginGridHandler',
+            'manage',
+            null,
+            ['category' => 'generic', 'plugin' => $this->getName(), 'verb' => 'outboxDashboardTab']
+        );
+
+        $zaloApiSettingsUrl = $this->getPluginManageUrl($request, 'apiTab');
+        $zaloGroupSettingsUrl = $this->getPluginManageUrl($request, 'settingsTab');
+        $zaloTemplatesUrl = $this->getPluginManageUrl($request, 'templatesTab');
 
         $templateMgr->assign([
+            'zaloApiSettingsUrl' => $zaloApiSettingsUrl,
+            'zaloGroupSettingsUrl' => $zaloGroupSettingsUrl,
+            'zaloTemplatesUrl' => $zaloTemplatesUrl,
             'zaloLogUrl' => $zaloLogUrl,
             'zaloReviewDashboardUrl' => $zaloReviewDashboardUrl,
+            'zaloOutboxDashboardUrl' => $zaloOutboxDashboardUrl,
         ]);
         $output .= $templateMgr->fetch($this->getTemplateResource('websiteSettingsTab.tpl'));
 
@@ -888,8 +904,11 @@ class ZaloNotificationPlugin extends GenericPlugin
 
                 $context = $request->getContext();
                 $contextId = $context ? (int) $context->getId() : 0;
+                $statsDate = (string) ($request->getUserVar('statsDate') ?? date('Y-m-d'));
                 $entries = ActivityLogger::getRecentEntries(PHP_INT_MAX, $filterType, $contextId);
                 $outboxStats = ZaloOutboxRepository::getStats($contextId);
+                $dailySummary = ActivityLogger::getDailySummary($statsDate, $contextId);
+
                 $templateMgr = TemplateManager::getManager($request);
                 $templateMgr->assign([
                     'entries' => $entries,
@@ -897,9 +916,19 @@ class ZaloNotificationPlugin extends GenericPlugin
                     'totalEntries' => count($entries),
                     'pluginName' => $this->getName(),
                     'outboxStats' => $outboxStats,
+                    'dailyStats' => $dailySummary,
+                    'selectedStatsDate' => $statsDate,
+                    'statsActionUrl' => $this->getPluginManageUrl($request, 'dailySummaryStats'),
                 ]);
 
                 return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('activityLog.tpl')));
+
+            case 'dailySummaryStats':
+                $context = $request->getContext();
+                $contextId = $context ? (int) $context->getId() : 0;
+                $statsDate = (string) ($request->getUserVar('statsDate') ?? date('Y-m-d'));
+                $dailySummary = ActivityLogger::getDailySummary($statsDate, $contextId);
+                return new JSONMessage(true, $dailySummary);
 
             case 'exportLog':
                 $context = $request->getContext();
@@ -929,7 +958,85 @@ class ZaloNotificationPlugin extends GenericPlugin
                 header('Content-Length: ' . strlen($content));
                 echo $content;
                 exit;
-                return new JSONMessage(false, 'Log file not found.');
+
+            // =================================================================
+            // OUTBOX & RETRY DASHBOARD
+            // =================================================================
+            case 'outboxDashboardTab':
+                $context = $request->getContext();
+                $contextId = $context ? (int) $context->getId() : 0;
+                $statusFilter = (string) ($request->getUserVar('statusFilter') ?? 'all');
+                
+                $entries = ZaloOutboxRepository::getOutboxEntries($contextId, $statusFilter, 100);
+                $stats = ZaloOutboxRepository::getStats($contextId);
+                
+                $templateMgr = TemplateManager::getManager($request);
+                $templateMgr->assign([
+                    'entries' => $entries,
+                    'stats' => $stats,
+                    'totalItems' => count($entries),
+                    'currentFilter' => $statusFilter,
+                    'outboxActionUrl' => $this->getPluginManageUrl($request, 'outboxAction'),
+                ]);
+                return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('outboxDashboard.tpl')));
+
+            case 'retryOutboxItem':
+                if (!$this->isValidWriteRequest($request)) {
+                    return new JSONMessage(false, __('form.csrfInvalid'));
+                }
+                $context = $request->getContext();
+                $contextId = $context ? (int) $context->getId() : 0;
+                $outboxId = (int) $request->getUserVar('outboxId');
+                if ($outboxId <= 0) {
+                    return new JSONMessage(false, 'ID tin nhắn không hợp lệ.');
+                }
+                
+                $success = ZaloOutboxRepository::retryItem($outboxId, $contextId);
+                if ($success) {
+                    $this->writeDebug("retryOutboxItem: Đã đưa tin #{$outboxId} về trạng thái chờ gửi");
+                    return new JSONMessage(true, "Tin nhắn #{$outboxId} đã được đưa về trạng thái Chờ gửi.");
+                }
+                return new JSONMessage(false, "Không thể cập nhật tin nhắn #{$outboxId}.");
+
+            case 'retryAllOutbox':
+                if (!$this->isValidWriteRequest($request)) {
+                    return new JSONMessage(false, __('form.csrfInvalid'));
+                }
+                $context = $request->getContext();
+                $contextId = $context ? (int) $context->getId() : 0;
+                
+                $count = ZaloOutboxRepository::retryAllFailed($contextId);
+                $this->writeDebug("retryAllOutbox: Đã đưa {$count} tin lỗi về trạng thái chờ gửi");
+                return new JSONMessage(true, "Đã đưa {$count} tin nhắn lỗi về trạng thái Chờ gửi.");
+
+            case 'deleteOutboxItem':
+                if (!$this->isValidWriteRequest($request)) {
+                    return new JSONMessage(false, __('form.csrfInvalid'));
+                }
+                $context = $request->getContext();
+                $contextId = $context ? (int) $context->getId() : 0;
+                $outboxId = (int) $request->getUserVar('outboxId');
+                if ($outboxId <= 0) {
+                    return new JSONMessage(false, 'ID tin nhắn không hợp lệ.');
+                }
+                
+                $success = ZaloOutboxRepository::deleteItem($outboxId, $contextId);
+                if ($success) {
+                    $this->writeDebug("deleteOutboxItem: Đã xóa tin #{$outboxId}");
+                    return new JSONMessage(true, "Đã xóa tin nhắn #{$outboxId} khỏi hàng đợi.");
+                }
+                return new JSONMessage(false, "Không thể xóa tin nhắn #{$outboxId}.");
+
+            case 'clearSentOutbox':
+                if (!$this->isValidWriteRequest($request)) {
+                    return new JSONMessage(false, __('form.csrfInvalid'));
+                }
+                $context = $request->getContext();
+                $contextId = $context ? (int) $context->getId() : 0;
+                
+                $count = ZaloOutboxRepository::clearSent($contextId);
+                $this->writeDebug("clearSentOutbox: Đã dọn dẹp {$count} tin đã gửi");
+                return new JSONMessage(true, "Đã dọn dẹp {$count} tin nhắn đã gửi thành công.");
         }
 
         return parent::manage($args, $request);

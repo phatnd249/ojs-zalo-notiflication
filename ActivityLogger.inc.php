@@ -68,7 +68,7 @@ class ActivityLogger
     {
         self::log(
             self::TYPE_SUBMISSION,
-            self::LEVEL_INFO,
+            self::isGoodStatus($zaloStatus) ? self::LEVEL_INFO : self::LEVEL_WARNING,
             'Author',
             $submissionId,
             $title,
@@ -95,7 +95,7 @@ class ActivityLogger
     ): void {
         self::log(
             self::TYPE_DECISION,
-            self::LEVEL_INFO,
+            self::isGoodStatus($zaloStatus) ? self::LEVEL_INFO : self::LEVEL_WARNING,
             'Editor',
             $submissionId,
             $title,
@@ -133,7 +133,7 @@ class ActivityLogger
 
         self::log(
             self::TYPE_PUBLISH,
-            self::LEVEL_INFO,
+            self::isGoodStatus($zaloStatus) ? self::LEVEL_INFO : self::LEVEL_WARNING,
             'System',
             $submissionId,
             $title,
@@ -344,6 +344,147 @@ class ActivityLogger
      * @param  string|null $filterType  Lọc theo type (null = tất cả)
      * @return array  Mảng các entry (associative array)
      */
+    /**
+     * Thống kê hoạt động và số lượng gửi tin Zalo theo ngày (hôm nay hoặc các ngày trước).
+     */
+    public static function getDailySummary(?string $selectedDate = null, ?int $contextId = null): array
+    {
+        $contextId = self::resolveContextId(0, $contextId);
+        $date = $selectedDate ? substr(trim($selectedDate), 0, 10) : date('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $date = date('Y-m-d');
+        }
+
+        $stats = [
+            'date' => $date,
+            'is_today' => ($date === date('Y-m-d')),
+            'sent' => 0,
+            'delivered' => 0,
+            'failed' => 0,
+            'retrying' => 0,
+            'events' => [
+                'submission' => 0,
+                'decision' => 0,
+                'publish' => 0,
+                'unpublish' => 0,
+                'review_request' => 0,
+                'review_response' => 0,
+                'review_reminder' => 0,
+                'review_completed' => 0,
+            ],
+            'recent_activity' => [],
+            'reviewer_reminders' => [
+                'overdue' => 0,
+                'due_in_3_days' => 0,
+            ]
+        ];
+
+        if (class_exists('ZaloOutboxRepository')) {
+            try {
+                $outboxStats = ZaloOutboxRepository::getStats($contextId);
+                $stats['retrying'] = (int) ($outboxStats['retry'] ?? 0) + (int) ($outboxStats['pending'] ?? 0) + (int) ($outboxStats['processing'] ?? 0);
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if (class_exists('ReviewReminderDashboardService')) {
+            try {
+                $submissions = ReviewReminderDashboardService::getSubmissions($contextId);
+                foreach ($submissions as $sub) {
+                    if (!isset($sub['reviewers']) || !is_array($sub['reviewers'])) continue;
+                    foreach ($sub['reviewers'] as $rev) {
+                        if (($rev['dueClass'] ?? '') === 'overdue') {
+                            $stats['reviewer_reminders']['overdue']++;
+                        } elseif (isset($rev['daysLeft']) && $rev['daysLeft'] >= 0 && $rev['daysLeft'] <= 3) {
+                            $stats['reviewer_reminders']['due_in_3_days']++;
+                        }
+                    }
+                }
+            } catch (\Throwable $ignored) {
+            }
+        }
+
+        $logFile = self::getLogFilePath($contextId);
+        self::enforceRetention($logFile);
+        $logFiles = self::getLogFiles($logFile, true);
+        if (empty($logFiles)) {
+            return $stats;
+        }
+
+        foreach ($logFiles as $file) {
+            $handle = @fopen($file, 'r');
+            if (!$handle) continue;
+
+            try {
+                while (($line = fgets($handle)) !== false) {
+                    $line = trim($line);
+                    if (empty($line)) continue;
+
+                    $data = json_decode($line, true);
+                    if (!is_array($data) || empty($data['time'])) continue;
+
+                    $entryDate = substr($data['time'], 0, 10);
+                    if ($entryDate !== $date) continue;
+
+                    $data = self::repairMojibake($data);
+                    $type = (string) ($data['type'] ?? '');
+                    $level = (string) ($data['level'] ?? '');
+                    $extra = isset($data['extra']) && is_array($data['extra']) ? $data['extra'] : [];
+                    $zaloStatus = (string) ($extra['zalo_status'] ?? ($extra['status'] ?? ''));
+
+                    // Count events
+                    if ($type === self::TYPE_SUBMISSION) $stats['events']['submission']++;
+                    elseif ($type === self::TYPE_DECISION) $stats['events']['decision']++;
+                    elseif ($type === self::TYPE_PUBLISH) $stats['events']['publish']++;
+                    elseif ($type === self::TYPE_UNPUBLISH) $stats['events']['unpublish']++;
+                    elseif ($type === self::TYPE_REVIEW_REQUEST) $stats['events']['review_request']++;
+                    elseif ($type === self::TYPE_REVIEW_RESPONSE) $stats['events']['review_response']++;
+                    elseif ($type === self::TYPE_REVIEW_REMINDER) $stats['events']['review_reminder']++;
+                    elseif ($type === self::TYPE_REVIEW_COMPLETED) $stats['events']['review_completed']++;
+
+                    // Count deliveries
+                    if ($zaloStatus !== '' || $type === self::TYPE_ZALO_SEND) {
+                        $stats['sent']++;
+                        if (self::isGoodStatus($zaloStatus)) {
+                            $stats['delivered']++;
+                        } else {
+                            $stats['failed']++;
+                        }
+                    } elseif ($type === self::TYPE_ERROR || $level === self::LEVEL_ERROR) {
+                        $stats['failed']++;
+                    }
+
+                    // Activity item
+                    $icon = '✓';
+                    $statusClass = 'success';
+                    if ($type === self::TYPE_ERROR || $level === self::LEVEL_ERROR || (strpos($zaloStatus, 'Thất bại') !== false)) {
+                        $icon = '✕';
+                        $statusClass = 'danger';
+                    } elseif (strpos($zaloStatus, 'retry') !== false || strpos($zaloStatus, 'Chờ') !== false) {
+                        $icon = '↻';
+                        $statusClass = 'warning';
+                    }
+
+                    $label = !empty($data['title']) ? (mb_substr((string) $data['title'], 0, 45) . (mb_strlen((string) $data['title']) > 45 ? '...' : '')) : ($data['action'] ?? $type);
+                    $stats['recent_activity'][] = [
+                        'time' => substr((string) $data['time'], 11, 5),
+                        'icon' => $icon,
+                        'class' => $statusClass,
+                        'type' => $type,
+                        'label' => $label,
+                        'actor' => $data['actor'] ?? 'System',
+                        'status' => $zaloStatus,
+                    ];
+                }
+            } finally {
+                fclose($handle);
+            }
+        }
+
+        $stats['recent_activity'] = array_slice(array_reverse($stats['recent_activity']), 0, 6);
+        return $stats;
+    }
+
     public static function getRecentEntries(int $limit = 100, ?string $filterType = null, ?int $contextId = null): array
     {
         $contextId = self::resolveContextId(0, $contextId);
@@ -558,6 +699,13 @@ class ActivityLogger
         $normalized = function_exists('mb_strtolower')
             ? mb_strtolower($status, 'UTF-8')
             : strtolower($status);
+
+        if (strpos($normalized, 'thất bại') !== false
+            || strpos($normalized, 'lỗi') !== false
+            || strpos($normalized, 'error') !== false
+            || strpos($normalized, 'failed') !== false) {
+            return false;
+        }
 
         return strpos($normalized, 'thành công') !== false
             || strpos($normalized, 'success') !== false
