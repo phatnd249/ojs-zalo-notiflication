@@ -174,6 +174,11 @@ class ZaloApiClient
             return $directStatus;
         }
 
+        // Không xếp hàng retry đối với lỗi cấu hình, lỗi client 4xx, hoặc gateway từ chối vĩnh viễn
+        if (!self::isRetryableStatus($directStatus)) {
+            return $directStatus;
+        }
+
         $contextId = self::resolveOutboxContextId($contextId);
         if ($contextId <= 0 || !class_exists('ZaloOutboxRepository')) {
             ZaloNotificationPlugin::writeSecureDebug(
@@ -198,6 +203,41 @@ class ZaloApiClient
         }
 
         return $directStatus . '; ' . $queueStatus;
+    }
+
+    /**
+     * Xác định xem lỗi trả về có thể xếp hàng retry (tạm thời) hay là lỗi vĩnh viễn.
+     */
+    public static function isRetryableStatus(string $status): bool
+    {
+        $status = trim($status);
+        if ($status === '' || $status === 'Thành công') {
+            return false;
+        }
+
+        // Lỗi cấu hình hoặc môi trường cục bộ
+        if (strpos($status, 'Chưa cấu hình API') !== false
+            || strpos($status, 'Thiếu số điện thoại') !== false
+            || strpos($status, 'PHP cURL') !== false) {
+            return false;
+        }
+
+        // Lỗi HTTP 4xx (400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found...)
+        if (preg_match('/Mã lỗi HTTP:\s*4\d\d/', $status)) {
+            return false;
+        }
+
+        // Gateway từ chối yêu cầu do dữ liệu/quyền không hợp lệ
+        if (strpos($status, 'Gateway từ chối yêu cầu') !== false) {
+            return false;
+        }
+
+        // Thất bại một phần: không retry nguyên danh sách để tránh spam những người đã nhận
+        if (strpos($status, 'Thất bại một phần') !== false) {
+            return false;
+        }
+
+        return true;
     }
 
     private static function resolveOutboxContextId(int $contextId): int
@@ -229,7 +269,7 @@ class ZaloApiClient
             return "Thất bại (PHP cURL chưa bật)";
         }
 
-        $url = 'https://sms-service.talab.io.vn/api/gateway/v1.0/bots/' . trim($botId) . '/messages/send-batch';
+        $url = 'https://sms-service.talab.io.vn/api/gateway/v1.0/bots/' . rawurlencode(trim($botId)) . '/messages/send-batch';
 
         $recipients = [];
         $seenPhones = [];

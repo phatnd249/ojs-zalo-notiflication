@@ -116,7 +116,7 @@ class ReviewNotificationHandler extends StageChangeHandler
                 $settings['botId'], $settings['apiKey'], [$phone],
                 'REVIEW_REMINDER_MANUAL', self::getSubmissionContextId($submission)
             );
-            $success = $status === 'Thành công';
+            $success = ($status === 'Thành công' || strpos($status, 'Đã xếp hàng') === 0);
             ActivityLogger::logReviewReminder(
                 (int) $submission->getId(), $title, $reviewerName,
                 $dueTime ? date('d/m/Y', $dueTime) : 'Chưa đặt hạn',
@@ -289,7 +289,7 @@ class ReviewNotificationHandler extends StageChangeHandler
                     $reviewerMessage = MessageHelper::buildMessage($reviewerTemplate, $data);
                     $statuses[] = 'Reviewer: ' . ZaloApiClient::sendToPhones(
                         $reviewerMessage, $settings['botId'], $settings['apiKey'], [$reviewerPhone],
-                        'REVIEW_RESPONSE', self::getSubmissionContextId($submission)
+                        'REVIEW_REMINDER', self::getSubmissionContextId($submission)
                     );
                 } else {
                     $statuses[] = 'Reviewer: SKIPPED (Chưa có SĐT)';
@@ -297,6 +297,23 @@ class ReviewNotificationHandler extends StageChangeHandler
             }
 
             $zaloStatus = $statuses ? implode(' | ', $statuses) : 'SKIPPED';
+            $isSent = false;
+            foreach ($statuses as $st) {
+                if (strpos($st, 'Thành công') !== false || strpos($st, 'Đã xếp hàng') !== false) {
+                    $isSent = true;
+                    break;
+                }
+            }
+            if ($isSent && $reviewAssignment) {
+                try {
+                    $reviewAssignment->setDateReminded(date('Y-m-d H:i:s'));
+                    $reviewAssignment->setReminderWasAutomatic(1);
+                    \DAORegistry::getDAO('ReviewAssignmentDAO')->updateObject($reviewAssignment);
+                } catch (\Throwable $updateError) {
+                    self::writeDebug('sendOverdueReviewReminder: Không cập nhật được date_reminded: ' . $updateError->getMessage());
+                }
+            }
+
             ActivityLogger::logReviewReminder($submissionId, $title, $reviewerName, $deadline, -$daysOverdue, $zaloStatus, 'Quá hạn phản biện', $dailyKey, $contextId);
             self::writeDebug("checkOverdueReviewDeadlines context {$contextId} #{$submissionId}/review {$reviewId}: {$zaloStatus}");
         } catch (\Throwable $e) {

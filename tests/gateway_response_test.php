@@ -85,4 +85,25 @@ assertGatewayResult(
     json_encode(['errorCode' => 0, 'data' => []])
 );
 
+if (ZaloApiClient::isRetryableStatus('Thành công')) {
+    fwrite(STDERR, "Success should not be retryable.\n");
+    exit(1);
+}
+if (ZaloApiClient::isRetryableStatus('Thất bại (Mã lỗi HTTP: 401)')) {
+    fwrite(STDERR, "HTTP 401 should not be retryable.\n");
+    exit(1);
+}
+if (ZaloApiClient::isRetryableStatus('Thất bại một phần (Một số người nhận bị lỗi)')) {
+    fwrite(STDERR, "Partial failure without individual phone filtering should not be retryable.\n");
+    exit(1);
+}
+if (!ZaloApiClient::isRetryableStatus('Thất bại (Lỗi kết nối gateway)')) {
+    fwrite(STDERR, "Transport error should be retryable.\n");
+    exit(1);
+}
+if (!ZaloApiClient::isRetryableStatus('Thất bại (Mã lỗi HTTP: 502)')) {
+    fwrite(STDERR, "HTTP 502 should be retryable.\n");
+    exit(1);
+}
+
 echo "Gateway response tests passed.\n";

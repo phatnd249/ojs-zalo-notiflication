@@ -175,6 +175,9 @@ class PostSaveNotificationDispatcher
         if (self::$plugin) {
             StageChangeHandler::setPlugin(self::$plugin);
         }
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
         foreach ($callbacks as $callback) {
             try {
                 $callback();

@@ -155,11 +155,11 @@ class ZaloOutboxRepository
         ]);
     }
 
-    public static function markFailed(int $outboxId, int $attempts, string $error): void
+    public static function markFailed(int $outboxId, int $attempts, string $error, bool $permanent = false): void
     {
         $now = date('Y-m-d H:i:s');
         $error = self::sanitizeError($error);
-        if ($attempts >= self::MAX_ATTEMPTS) {
+        if ($permanent || $attempts >= self::MAX_ATTEMPTS) {
             Capsule::table(self::TABLE)->where('outbox_id', $outboxId)->update([
                 'status' => 'failed',
                 'locked_at' => null,

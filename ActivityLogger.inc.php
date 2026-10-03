@@ -426,7 +426,7 @@ class ActivityLogger
                     $entryDate = substr($data['time'], 0, 10);
                     if ($entryDate !== $date) continue;
 
-                    $data = self::repairMojibake($data);
+                    $data = self::sanitizeUtf8($data);
                     $type = (string) ($data['type'] ?? '');
                     $level = (string) ($data['level'] ?? '');
                     $extra = isset($data['extra']) && is_array($data['extra']) ? $data['extra'] : [];
@@ -515,7 +515,7 @@ class ActivityLogger
                         continue;
                     }
 
-                    $data = self::repairMojibake($data);
+                    $data = self::sanitizeUtf8($data);
                     if ($filterType !== null && (!isset($data['type']) || $data['type'] !== $filterType)) {
                         continue;
                     }
@@ -782,7 +782,7 @@ class ActivityLogger
         $logFile = self::getLogFilePath($contextId);
         self::enforceRetention($logFile);
         self::rotateIfNeeded($logFile);
-        $entry = self::repairMojibake($entry);
+        $entry = self::sanitizeUtf8($entry);
         $line = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
         $written = @file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
 
@@ -848,11 +848,11 @@ class ActivityLogger
         return implode(' | ', array_slice($lines, 0, 6));
     }
 
-    private static function repairMojibake($value)
+    private static function sanitizeUtf8($value)
     {
         if (is_array($value)) {
             foreach ($value as $key => $item) {
-                $value[$key] = self::repairMojibake($item);
+                $value[$key] = self::sanitizeUtf8($item);
             }
             return $value;
         }
@@ -861,37 +861,13 @@ class ActivityLogger
             return $value;
         }
 
-        if (!self::hasMojibakeMarker($value)) {
-            return $value;
+        if (function_exists('mb_check_encoding') && !mb_check_encoding($value, 'UTF-8')) {
+            return function_exists('mb_convert_encoding')
+                ? mb_convert_encoding($value, 'UTF-8', 'UTF-8')
+                : $value;
         }
 
-        $fixed = $value;
-        for ($i = 0; $i < 3; $i++) {
-            if (!function_exists('iconv')) {
-                break;
-            }
-            $converted = @iconv('UTF-8', 'Windows-1252//IGNORE', $fixed);
-            if ($converted === false || $converted === '' || $converted === $fixed) {
-                break;
-            }
-            $fixed = $converted;
-            if (!self::hasMojibakeMarker($fixed)) {
-                break;
-            }
-        }
-
-        return $fixed;
-    }
-
-    private static function hasMojibakeMarker(string $value): bool
-    {
-        foreach (["\xC3\x83", "\xC3\x82", "\xC3\x84"] as $marker) {
-            if (strpos($value, $marker) !== false) {
-                return true;
-            }
-        }
-
-        return false;
+        return $value;
     }
 
     private static function debugWrite(string $message): void

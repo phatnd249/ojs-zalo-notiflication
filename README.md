@@ -70,7 +70,7 @@ curl -I https://sms-service.talab.io.vn
    ```
 
 4. **Kích hoạt plugin:**
-   Vào **Settings → Website → Plugins → Installed Plugins**, tìm **Zalo Notification Plugin** và tích chọn **Enable**. Hệ thống sẽ tự động tạo bảng `zalo_outbox`.
+   Vào **Settings → Website → Plugins → Installed Plugins**, tìm **Zalo Notification Plugin** và tích chọn **Enable**. Hệ thống sẽ tự động tạo bảng `zalo_notification_outbox`.
 
 ### Cách 2: Cài qua file nén `.tar.gz` (qua giao diện Web)
 
@@ -92,20 +92,23 @@ Sau khi kích hoạt, truy cập **Settings → Website** để cấu hình theo
 
 2. **Cài đặt Nhóm Zalo:** Tạo nhóm nhận tin (BTV, Thư ký), nhập số điện thoại (tự động chuẩn hóa `849xxxxxxxx`), chọn sự kiện nhận tin.
 
-3. **Mẫu tin Zalo:** Tùy chỉnh nội dung tin nhắn cho từng vai trò. Biến hỗ trợ: `{title}`, `{author}`, `{submissionId}`, `{workflowUrl}`.
+3. **Mẫu tin Zalo:** Tùy chỉnh nội dung tin nhắn cho từng vai trò:
+   - **Biến chung:** `{title}`, `{author}`, `{submissionId}`, `{stageName}`, `{timestamp}`
+   - **Liên kết điều hướng:** `{workflowUrl}` (BTV), `{reviewerUrl}` (Phản biện), `{authorUrl}` (Tác giả), `{publicUrl}`
+   - **Biến phản biện & thời hạn:** `{reviewerName}`, `{deadline}`, `{daysLeft}`, `{round}`
 
 ---
 
 ## ⏰ Cấu hình Cron Job
 
-Plugin có 2 tác vụ chạy ngầm:
-- **ZaloOverdueReviewTask:** Tự động nhắc phản biện quá hạn.
-- **ZaloOutboxTask:** Tự động gửi lại tin nhắn lỗi (Exponential Backoff).
+Plugin có 2 tác vụ chạy ngầm được khai báo trong `scheduledTasks.xml`:
+- **ZaloOutboxTask:** Hàng đợi gửi tin và thử lại khi lỗi (`minute="*"` — chạy mỗi phút).
+- **ZaloOverdueReviewTask:** Tự động quét và nhắc phản biện quá hạn (`minute="0"` — chạy mỗi giờ).
 
 ### Thiết lập trên Linux:
 ```bash
-# Chạy mỗi 15 phút (crontab -e dưới quyền www-data/apache)
-*/15 * * * * php <OJS_ROOT>/tools/runScheduledTasks.php <OJS_ROOT>/plugins/generic/zaloNotification/scheduledTasks.xml > /dev/null 2>&1
+# Chạy mỗi phút để Outbox xử lý kịp thời (crontab -e dưới quyền www-data/apache)
+* * * * * php <OJS_ROOT>/tools/runScheduledTasks.php <OJS_ROOT>/plugins/generic/zaloNotification/scheduledTasks.xml > /dev/null 2>&1
 ```
 
 > **Lưu ý:** Nếu dùng plugin **Acron** mặc định của OJS, plugin đã tự đăng ký hook `AcronPlugin::parseCronTab` nên không cần cấu hình cron thủ công.
@@ -115,7 +118,7 @@ Plugin có 2 tác vụ chạy ngầm:
 ## 🔒 Bảo mật & Phân quyền
 
 - **Phân quyền:** Chỉ **Journal Manager** và **Site Administrator** mới truy cập được các tab cấu hình.
-- **API Key:** Lưu trong database, không hiển thị dạng plain text sau khi lưu.
+- **API Key:** Lưu trong bảng `plugin_settings` của database OJS và được ẩn đi (masked) trên giao diện cấu hình sau khi lưu.
 - **CSRF:** Mọi thao tác ghi dữ liệu đều yêu cầu CSRF token hợp lệ.
 - **Tự động dọn dẹp:** Activity Log tự xóa bản ghi cũ hơn **90 ngày**.
 

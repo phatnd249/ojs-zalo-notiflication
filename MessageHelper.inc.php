@@ -16,6 +16,7 @@ class MessageHelper
             'submissionId', 'stageId', 'reviewId', 'publicationId',
             'workflowUrl', 'authorUrl', 'reviewerUrl', 'publicUrl',
         ];
+        $replaceMap = [];
         foreach ($data as $key => $value) {
             if (in_array($key, $optionalNavigationKeys, true) && trim((string) $value) === '') {
                 $pattern = '/^.*\{' . preg_quote((string) $key, '/') . '\}.*(?:\R|$)/mu';
@@ -25,8 +26,13 @@ class MessageHelper
                 }
                 continue;
             }
-            $message = str_replace('{' . $key . '}', $value, $message);
+            $replaceMap['{' . $key . '}'] = (string) $value;
         }
+
+        if (!empty($replaceMap)) {
+            $message = strtr($message, $replaceMap);
+        }
+
         return trim($message);
     }
 

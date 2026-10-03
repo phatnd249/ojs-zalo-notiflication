@@ -63,7 +63,8 @@ class ZaloOutboxTask extends ScheduledTask
                     ZaloOutboxRepository::markSent($outboxId);
                     $sent++;
                 } else {
-                    ZaloOutboxRepository::markFailed($outboxId, $attempts, $status);
+                    $isRetryable = ZaloApiClient::isRetryableStatus($status);
+                    ZaloOutboxRepository::markFailed($outboxId, $attempts, $status, !$isRetryable);
                     $failed++;
                 }
 

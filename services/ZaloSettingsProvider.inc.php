@@ -4,7 +4,6 @@
 class ZaloSettingsProvider
 {
     private const PLUGIN_NAME = 'zalonotificationplugin';
-    private const DEFAULT_BOT_ID = '7ddde23b-a9c2-40c1-bc89-7a308ba00466';
 
     public static function getForContext(int $contextId): array
     {
@@ -14,9 +13,6 @@ class ZaloSettingsProvider
         $groupsJson = $pluginSettingsDao->getSetting($contextId, self::PLUGIN_NAME, 'recipientGroups');
         $groups = $groupsJson ? json_decode((string) $groupsJson, true) : [];
 
-        if ($botId === '') {
-            $botId = self::DEFAULT_BOT_ID;
-        }
         if (!is_array($groups)) {
             $groups = [];
         }

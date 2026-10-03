@@ -194,8 +194,8 @@ class ZaloNotificationPlugin extends GenericPlugin
                 HookRegistry::register('EditorAction::reinstateReview', [$this, 'onReinstateReviewCallback']);
                 HookRegistry::register('reviewerreviewstep3form::execute', [$this, 'onReviewerReviewCompletedCallback']);
                 HookRegistry::register('pkpreviewerreviewstep3form::execute', [$this, 'onReviewerReviewCompletedCallback']);
-                HookRegistry::register('addparticipantform::execute', [$this, 'onAddEditorParticipantCallback']);
-                HookRegistry::register('TemplateManager::display', [$this, 'registerReviewerAssessmentPrototype']);
+                // Prototype phiếu đánh giá phản biện đang thử nghiệm, tạm tắt ở bản phát hành
+                // HookRegistry::register('TemplateManager::display', [$this, 'registerReviewerAssessmentPrototype']);
 
                 // 6. Thêm Tab Activity Log vào trang Settings > Website để dễ truy cập
                 HookRegistry::register('Template::Settings::website', [$this, 'callbackShowWebsiteSettingsTabs']);

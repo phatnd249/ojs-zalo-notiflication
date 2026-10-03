@@ -140,8 +140,7 @@ class StageChangeHandler
             ? mb_strtolower($template, 'UTF-8')
             : strtolower($template);
         return strpos($normalized, 'bạn không có thông báo') === false
-            && strpos($normalized, 'không có thông báo') === false
-            && strpos($normalized, 'khÃ´ng cÃ³ thÃ´ng bÃ¡o') === false;
+            && strpos($normalized, 'không có thông báo') === false;
     }
 
 
