@@ -20,7 +20,7 @@ assertGatewayResult(
 
 assertGatewayResult(
     'HTTP 200 with application failure',
-    'Thất bại (Gateway từ chối yêu cầu)',
+    'Thất bại (Gateway từ chối: Invalid request)',
     200,
     json_encode(['success' => false, 'message' => 'Invalid request'])
 );
@@ -65,9 +65,16 @@ assertGatewayResult('Legacy text response', 'Thành công', 200, 'OK');
 
 assertGatewayResult(
     'HTTP error overrides successful body',
-    'Thất bại (Mã lỗi HTTP: 401)',
+    'Thất bại (Mã lỗi HTTP: 401 - Sai API Key hoặc chưa được xác thực)',
     401,
     json_encode(['success' => true])
+);
+
+assertGatewayResult(
+    'HTTP 400 with detailed gateway error',
+    'Thất bại (Mã lỗi HTTP: 400 - Không thể resolve bất kỳ recipient nào.)',
+    400,
+    json_encode(['success' => false, 'status' => 'failed', 'message' => 'Không thể resolve bất kỳ recipient nào.'])
 );
 
 assertGatewayResult(
@@ -89,8 +96,16 @@ if (ZaloApiClient::isRetryableStatus('Thành công')) {
     fwrite(STDERR, "Success should not be retryable.\n");
     exit(1);
 }
-if (ZaloApiClient::isRetryableStatus('Thất bại (Mã lỗi HTTP: 401)')) {
+if (ZaloApiClient::isRetryableStatus('Thất bại (Mã lỗi HTTP: 401 - Sai API Key hoặc chưa được xác thực)')) {
     fwrite(STDERR, "HTTP 401 should not be retryable.\n");
+    exit(1);
+}
+if (ZaloApiClient::isRetryableStatus('Thất bại (Mã lỗi HTTP: 400 - Không thể resolve bất kỳ recipient nào.)')) {
+    fwrite(STDERR, "HTTP 400 client error should not be auto-retried by background worker.\n");
+    exit(1);
+}
+if (ZaloApiClient::isRetryableStatus('Thất bại (Gateway từ chối: Invalid request)')) {
+    fwrite(STDERR, "Gateway rejection should not be auto-retried by background worker.\n");
     exit(1);
 }
 if (ZaloApiClient::isRetryableStatus('Thất bại một phần (Một số người nhận bị lỗi)')) {

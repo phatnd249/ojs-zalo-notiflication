@@ -42,8 +42,13 @@ class ZaloOutboxRepository
         return self::$schemaReady === true;
     }
 
-    public static function enqueue(int $contextId, string $eventType, string $messageText, array $phoneNumbers): string
-    {
+    public static function enqueue(
+        int $contextId,
+        string $eventType,
+        string $messageText,
+        array $phoneNumbers,
+        ?string $lastError = null
+    ): string {
         if (!self::ensureSchema()) {
             return 'Thất bại (Chưa khởi tạo được hàng đợi)';
         }
@@ -62,6 +67,7 @@ class ZaloOutboxRepository
             $contextId . '|' . $eventType . '|' . $dedupeWindow . '|' . implode(',', $recipients) . '|' . $messageText
         );
         $now = date('Y-m-d H:i:s');
+        $sanitizedError = $lastError !== null ? self::sanitizeError($lastError) : null;
 
         try {
             Capsule::table(self::TABLE)->insert([
@@ -75,7 +81,7 @@ class ZaloOutboxRepository
                 'available_at' => $now,
                 'locked_at' => null,
                 'sent_at' => null,
-                'last_error' => null,
+                'last_error' => $sanitizedError,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -84,6 +90,12 @@ class ZaloOutboxRepository
             // Ràng buộc unique là lớp chống trùng cuối cùng khi nhiều hook chạy đồng thời.
             try {
                 if (Capsule::table(self::TABLE)->where('dedupe_key', $dedupeKey)->exists()) {
+                    if ($sanitizedError !== null) {
+                        Capsule::table(self::TABLE)
+                            ->where('dedupe_key', $dedupeKey)
+                            ->whereNull('last_error')
+                            ->update(['last_error' => $sanitizedError, 'updated_at' => $now]);
+                    }
                     return 'Đã xếp hàng (trùng đã bỏ qua)';
                 }
             } catch (\Throwable $ignored) {
@@ -294,16 +306,66 @@ class ZaloOutboxRepository
             ->delete();
     }
 
-    public static function cleanup(): int
+    public static function cleanup(?int $contextId = null): int
     {
         if (!self::ensureSchema()) {
             return 0;
         }
+
+        if ($contextId !== null && $contextId > 0) {
+            $retentionDays = self::getRetentionDays($contextId);
+            $cutoff = date('Y-m-d H:i:s', time() - $retentionDays * 86400);
+            return Capsule::table(self::TABLE)
+                ->where('context_id', $contextId)
+                ->whereIn('status', ['sent', 'failed'])
+                ->where('updated_at', '<', $cutoff)
+                ->delete();
+        }
+
+        $deleted = 0;
+        try {
+            $contextIds = Capsule::table(self::TABLE)
+                ->distinct()
+                ->pluck('context_id')
+                ->all();
+            if (!empty($contextIds)) {
+                foreach ($contextIds as $ctxId) {
+                    $ctxId = (int) $ctxId;
+                    $retentionDays = self::getRetentionDays($ctxId);
+                    $cutoff = date('Y-m-d H:i:s', time() - $retentionDays * 86400);
+                    $deleted += Capsule::table(self::TABLE)
+                        ->where('context_id', $ctxId)
+                        ->whereIn('status', ['sent', 'failed'])
+                        ->where('updated_at', '<', $cutoff)
+                        ->delete();
+                }
+                return $deleted;
+            }
+        } catch (\Throwable $e) {
+        }
+
         $cutoff = date('Y-m-d H:i:s', time() - self::RETENTION_DAYS * 86400);
         return Capsule::table(self::TABLE)
             ->whereIn('status', ['sent', 'failed'])
             ->where('updated_at', '<', $cutoff)
             ->delete();
+    }
+
+    public static function getRetentionDays(?int $contextId = null): int
+    {
+        if ($contextId === null || $contextId <= 0) {
+            $contextId = class_exists('ZaloSettingsProvider') ? ZaloSettingsProvider::getCurrentContextId() : 0;
+        }
+        if ($contextId > 0 && class_exists('\DAORegistry')) {
+            try {
+                $days = (int) \DAORegistry::getDAO('PluginSettingsDAO')->getSetting($contextId, 'zalonotificationplugin', 'outboxRetentionDays');
+                if ($days > 0) {
+                    return $days;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+        return self::RETENTION_DAYS;
     }
 
     public static function getStats(int $contextId): array

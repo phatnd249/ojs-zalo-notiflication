@@ -724,8 +724,8 @@
                 <span style="color:#0284c7;">📋</span>
                 <span>Activity Log — Zalo Notification</span>
             </h3>
-            <span class="zalo-header-retention" title="Nhật ký được bảo vệ và tự động xoay vòng sau 90 ngày">
-                🛡️ Lưu 90 ngày
+            <span class="zalo-header-retention" title="Nhật ký được bảo vệ và tự động xoay vòng sau {$logRetentionDays|default:90} ngày">
+                🛡️ Lưu {$logRetentionDays|default:90} ngày
             </span>
         </div>
         <div class="zalo-header-right">

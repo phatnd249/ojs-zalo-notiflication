@@ -641,7 +641,7 @@ class ActivityLogger
     /**
      * Xóa bản ghi quá thời hạn lưu. Việc kiểm tra chỉ chạy tối đa một lần/ngày.
      */
-    private static function enforceRetention(string $logFile): void
+    private static function enforceRetention(string $logFile, ?int $contextId = null): void
     {
         if (isset(self::$retentionChecked[$logFile])) {
             return;
@@ -656,7 +656,13 @@ class ActivityLogger
         @touch($marker);
         @chmod($marker, 0600);
 
-        $cutoff = time() - (self::LOG_RETENTION_DAYS * 86400);
+        if ($contextId === null || $contextId <= 0) {
+            if (preg_match('/_context_(\d+)\.log$/', basename($logFile), $matches)) {
+                $contextId = (int) $matches[1];
+            }
+        }
+        $retentionDays = self::getRetentionDays($contextId);
+        $cutoff = time() - ($retentionDays * 86400);
         foreach (self::getLogFiles($logFile, true) as $retentionFile) {
             if (!is_readable($retentionFile) || !is_writable($retentionFile)) {
                 continue;
@@ -687,6 +693,21 @@ class ActivityLogger
                 }
             }
         }
+    }
+
+    public static function getRetentionDays(?int $contextId = null): int
+    {
+        $contextId = self::resolveContextId(0, $contextId);
+        if ($contextId > 0 && class_exists('\DAORegistry')) {
+            try {
+                $days = (int) \DAORegistry::getDAO('PluginSettingsDAO')->getSetting($contextId, 'zalonotificationplugin', 'logRetentionDays');
+                if ($days > 0) {
+                    return $days;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+        return self::LOG_RETENTION_DAYS;
     }
 
     private static function isGoodStatus(string $status): bool

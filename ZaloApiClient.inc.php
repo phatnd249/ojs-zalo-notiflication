@@ -9,13 +9,6 @@
  */
 class ZaloApiClient
 {
-    /**
-     * Chuẩn hóa số điện thoại Việt Nam sang định dạng quốc tế (84xxx).
-     * Zalo API yêu cầu số điện thoại ở dạng quốc tế để resolve người nhận.
-     *
-     * VD: 0912345678 → 84912345678
-     *     84912345678 → 84912345678 (giữ nguyên)
-     */
     private static function normalizePhone(string $phone): string
     {
         $clean = preg_replace('/[^0-9]/', '', trim($phone));
@@ -174,15 +167,11 @@ class ZaloApiClient
             return $directStatus;
         }
 
-        // Không xếp hàng retry đối với lỗi cấu hình, lỗi client 4xx, hoặc gateway từ chối vĩnh viễn
-        if (!self::isRetryableStatus($directStatus)) {
-            return $directStatus;
-        }
-
+        // Khi gửi trực tiếp gặp lỗi: đưa vào hàng chờ (outbox queue) để theo dõi và retry
         $contextId = self::resolveOutboxContextId($contextId);
         if ($contextId <= 0 || !class_exists('ZaloOutboxRepository')) {
             ZaloNotificationPlugin::writeSecureDebug(
-                "sendToPhones [{$eventType}]: Gửi trực tiếp lỗi nhưng không xác định được context để retry.",
+                "sendToPhones [{$eventType}]: Gửi trực tiếp lỗi nhưng không xác định được context để xếp hàng retry.",
                 'ZaloApiClient'
             );
             return $directStatus . '; không thể xếp hàng retry';
@@ -192,7 +181,8 @@ class ZaloApiClient
             $contextId,
             $eventType,
             $messageText,
-            $normalizedPhones
+            $normalizedPhones,
+            $directStatus
         );
         if (strpos($queueStatus, 'Đã xếp hàng') === 0) {
             ZaloNotificationPlugin::writeSecureDebug(
@@ -228,7 +218,7 @@ class ZaloApiClient
         }
 
         // Gateway từ chối yêu cầu do dữ liệu/quyền không hợp lệ
-        if (strpos($status, 'Gateway từ chối yêu cầu') !== false) {
+        if (strpos($status, 'Gateway từ chối') !== false) {
             return false;
         }
 
@@ -247,9 +237,24 @@ class ZaloApiClient
         }
         if (class_exists('ZaloSettingsProvider')) {
             try {
-                return (int) ZaloSettingsProvider::getCurrentContextId();
+                $ctx = (int) ZaloSettingsProvider::getCurrentContextId();
+                if ($ctx > 0) {
+                    return $ctx;
+                }
             } catch (\Throwable $e) {
-                return 0;
+            }
+        }
+        if (class_exists('\DAORegistry')) {
+            try {
+                $journalDao = \DAORegistry::getDAO('JournalDAO');
+                if ($journalDao) {
+                    $journals = $journalDao->getAll(true);
+                    $firstJournal = $journals ? $journals->next() : null;
+                    if ($firstJournal) {
+                        return (int) $firstJournal->getId();
+                    }
+                }
+            } catch (\Throwable $ignored) {
             }
         }
         return 0;
@@ -326,12 +331,13 @@ class ZaloApiClient
 
         $gatewayResult = self::analyzeGatewayResponse((int) $httpCode, $response, $curlError);
 
-        // Không ghi payload, số điện thoại, API key hoặc nội dung phản hồi vào log.
+        // Ghi log bảo mật có bổ sung chi tiết lỗi từ gateway nếu có (không ghi payload PII)
         ZaloNotificationPlugin::writeSecureDebug(
             "sendToPhones: HTTP={$httpCode} | recipients=" . count($recipients)
                 . " | response_format=" . $gatewayResult['format']
                 . " | gateway_signal=" . $gatewayResult['signal']
-                . ($curlError !== '' ? " | cURL error=" . self::sanitizeDiagnostic($curlError) : ''),
+                . ($curlError !== '' ? " | cURL error=" . self::sanitizeDiagnostic($curlError) : '')
+                . (!empty($gatewayResult['detail']) ? " | gateway_message=" . self::sanitizeDiagnostic($gatewayResult['detail']) : ''),
             'ZaloApiClient'
         );
 
@@ -355,6 +361,7 @@ class ZaloApiClient
                 'result' => 'Thất bại (Lỗi kết nối gateway)',
                 'format' => 'none',
                 'signal' => 'transport_error',
+                'detail' => $curlError,
             ];
         }
 
@@ -365,32 +372,43 @@ class ZaloApiClient
             'failure' => false,
             'partial' => false,
         ];
+        $detailError = '';
 
         if ($body !== '') {
             $decoded = json_decode($body, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $format = 'json';
                 self::collectGatewaySignals($decoded, $signals, 0);
+                $detailError = self::extractGatewayErrorMessage($decoded);
             }
         }
 
         // A transport/protocol failure always wins, even if the body claims success.
         if ($httpCode < 200 || $httpCode >= 300) {
+            $reason = $detailError !== '' ? $detailError : self::getHttpStatusExplanation($httpCode);
+            $suffix = $reason !== '' ? " - {$reason}" : '';
             return [
-                'result' => "Thất bại (Mã lỗi HTTP: {$httpCode})",
+                'result' => "Thất bại (Mã lỗi HTTP: {$httpCode}{$suffix})",
                 'format' => $format,
                 'signal' => 'http_error',
+                'detail' => $detailError,
             ];
         }
 
         // Gateways sometimes return HTTP 200 while rejecting the business request.
         if ($signals['failure']) {
+            if ($signals['partial']) {
+                $msg = $detailError !== '' ? $detailError : 'Một số người nhận bị lỗi';
+                $result = "Thất bại một phần ({$msg})";
+            } else {
+                $msg = $detailError !== '' ? ": {$detailError}" : ' yêu cầu';
+                $result = "Thất bại (Gateway từ chối{$msg})";
+            }
             return [
-                'result' => $signals['partial']
-                    ? 'Thất bại một phần (Một số người nhận bị lỗi)'
-                    : 'Thất bại (Gateway từ chối yêu cầu)',
+                'result' => $result,
                 'format' => $format,
                 'signal' => $signals['partial'] ? 'partial_failure' : 'application_error',
+                'detail' => $detailError,
             ];
         }
 
@@ -398,7 +416,92 @@ class ZaloApiClient
             'result' => 'Thành công',
             'format' => $format,
             'signal' => $signals['success'] ? 'application_success' : 'http_success',
+            'detail' => '',
         ];
+    }
+
+    /**
+     * Trích xuất thông điệp lỗi chi tiết từ phản hồi của Gateway (nếu có).
+     */
+    private static function extractGatewayErrorMessage(array $decoded): string
+    {
+        $candidates = ['message', 'msg', 'error_message', 'errorMessage', 'error_description', 'detail', 'reason', 'description'];
+        foreach ($candidates as $key) {
+            if (isset($decoded[$key]) && is_string($decoded[$key]) && trim($decoded[$key]) !== '') {
+                return self::sanitizeDiagnostic($decoded[$key]);
+            }
+        }
+
+        if (isset($decoded['error'])) {
+            if (is_string($decoded['error']) && trim($decoded['error']) !== '') {
+                return self::sanitizeDiagnostic($decoded['error']);
+            }
+            if (is_array($decoded['error'])) {
+                foreach ($candidates as $key) {
+                    if (isset($decoded['error'][$key]) && is_string($decoded['error'][$key]) && trim($decoded['error'][$key]) !== '') {
+                        return self::sanitizeDiagnostic($decoded['error'][$key]);
+                    }
+                }
+                $flat = array_filter(array_map('strval', $decoded['error']));
+                if (!empty($flat)) {
+                    return self::sanitizeDiagnostic(implode('; ', $flat));
+                }
+            }
+        }
+
+        if (isset($decoded['errors']) && is_array($decoded['errors'])) {
+            $flat = [];
+            foreach ($decoded['errors'] as $k => $v) {
+                if (is_string($v) && trim($v) !== '') {
+                    $flat[] = is_numeric($k) ? $v : "{$k}: {$v}";
+                } elseif (is_array($v)) {
+                    $sub = array_filter(array_map('strval', $v));
+                    if (!empty($sub)) {
+                        $flat[] = is_numeric($k) ? implode(', ', $sub) : "{$k}: " . implode(', ', $sub);
+                    }
+                }
+            }
+            if (!empty($flat)) {
+                return self::sanitizeDiagnostic(implode('; ', $flat));
+            }
+        }
+
+        if (isset($decoded['data']) && is_array($decoded['data'])) {
+            foreach ($candidates as $key) {
+                if (isset($decoded['data'][$key]) && is_string($decoded['data'][$key]) && trim($decoded['data'][$key]) !== '') {
+                    return self::sanitizeDiagnostic($decoded['data'][$key]);
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Mô tả giải thích thân thiện cho người dùng đối với các mã lỗi HTTP phổ biến khi gateway không có body chi tiết.
+     */
+    private static function getHttpStatusExplanation(int $httpCode): string
+    {
+        switch ($httpCode) {
+            case 400:
+                return 'Dữ liệu không hợp lệ hoặc không xác định được người nhận';
+            case 401:
+                return 'Sai API Key hoặc chưa được xác thực';
+            case 403:
+                return 'Không có quyền truy cập hoặc Bot ID/API Key không hợp lệ';
+            case 404:
+                return 'Không tìm thấy endpoint hoặc Bot ID';
+            case 429:
+                return 'Vượt quá tần suất gửi tin cho phép (Rate limit)';
+            case 500:
+                return 'Lỗi máy chủ gateway';
+            case 502:
+            case 503:
+            case 504:
+                return 'Máy chủ gateway đang quá tải hoặc tạm thời gián đoạn';
+            default:
+                return '';
+        }
     }
 
     private static function collectGatewaySignals(array $value, array &$signals, int $depth): void

@@ -2,6 +2,7 @@
 
 
 import('lib.pkp.classes.plugins.GenericPlugin');
+import('lib.pkp.classes.plugins.HookRegistry');
 import('lib.pkp.classes.linkAction.LinkAction');
 import('lib.pkp.classes.linkAction.request.AjaxModal');
 import('lib.pkp.classes.core.JSONMessage');
@@ -640,11 +641,17 @@ class ZaloNotificationPlugin extends GenericPlugin
 
                 $botId = $this->getSetting($contextId, 'botId');
                 $savedApiKey = trim((string) ($this->getSetting($contextId, 'apiKey') ?? ''));
+                $logRetentionDays = (int) ($this->getSetting($contextId, 'logRetentionDays') ?: 90);
+                if ($logRetentionDays <= 0) $logRetentionDays = 90;
+                $outboxRetentionDays = (int) ($this->getSetting($contextId, 'outboxRetentionDays') ?: 30);
+                if ($outboxRetentionDays <= 0) $outboxRetentionDays = 30;
 
                 $templateMgr = TemplateManager::getManager($request);
                 $templateMgr->assign([
                     'botId' => $botId,
                     'apiKeyConfigured' => $savedApiKey !== '',
+                    'logRetentionDays' => $logRetentionDays,
+                    'outboxRetentionDays' => $outboxRetentionDays,
                     'saveUrl' => $saveUrl,
                 ]);
 
@@ -661,6 +668,8 @@ class ZaloNotificationPlugin extends GenericPlugin
 
                 $botId = trim($request->getUserVar('botId') ?? '');
                 $apiKey = trim($request->getUserVar('apiKey') ?? '');
+                $logRetentionDays = max(1, min(730, (int) ($request->getUserVar('logRetentionDays') ?: 90)));
+                $outboxRetentionDays = max(1, min(365, (int) ($request->getUserVar('outboxRetentionDays') ?: 30)));
 
                 $this->updateSetting($contextId, 'botId', $botId);
                 // Không gửi khóa hiện có về trình duyệt. Để trống khi lưu nghĩa
@@ -668,8 +677,10 @@ class ZaloNotificationPlugin extends GenericPlugin
                 if ($apiKey !== '') {
                     $this->updateSetting($contextId, 'apiKey', $apiKey);
                 }
+                $this->updateSetting($contextId, 'logRetentionDays', $logRetentionDays);
+                $this->updateSetting($contextId, 'outboxRetentionDays', $outboxRetentionDays);
 
-                $this->writeDebug('saveApiSettings: Đã lưu API Settings.');
+                $this->writeDebug("saveApiSettings: Đã lưu API Settings (logRetention={$logRetentionDays}d, outboxRetention={$outboxRetentionDays}d).");
 
                 return new JSONMessage(true);
 
@@ -909,6 +920,9 @@ class ZaloNotificationPlugin extends GenericPlugin
                 $outboxStats = ZaloOutboxRepository::getStats($contextId);
                 $dailySummary = ActivityLogger::getDailySummary($statsDate, $contextId);
 
+                $logRetentionDays = (int) ($this->getSetting($contextId, 'logRetentionDays') ?: 90);
+                if ($logRetentionDays <= 0) $logRetentionDays = 90;
+
                 $templateMgr = TemplateManager::getManager($request);
                 $templateMgr->assign([
                     'entries' => $entries,
@@ -918,6 +932,7 @@ class ZaloNotificationPlugin extends GenericPlugin
                     'outboxStats' => $outboxStats,
                     'dailyStats' => $dailySummary,
                     'selectedStatsDate' => $statsDate,
+                    'logRetentionDays' => $logRetentionDays,
                     'statsActionUrl' => $this->getPluginManageUrl($request, 'dailySummaryStats'),
                 ]);
 
@@ -969,6 +984,8 @@ class ZaloNotificationPlugin extends GenericPlugin
                 
                 $entries = ZaloOutboxRepository::getOutboxEntries($contextId, $statusFilter, 100);
                 $stats = ZaloOutboxRepository::getStats($contextId);
+                $outboxRetentionDays = (int) ($this->getSetting($contextId, 'outboxRetentionDays') ?: 30);
+                if ($outboxRetentionDays <= 0) $outboxRetentionDays = 30;
                 
                 $templateMgr = TemplateManager::getManager($request);
                 $templateMgr->assign([
@@ -976,6 +993,7 @@ class ZaloNotificationPlugin extends GenericPlugin
                     'stats' => $stats,
                     'totalItems' => count($entries),
                     'currentFilter' => $statusFilter,
+                    'outboxRetentionDays' => $outboxRetentionDays,
                     'outboxActionUrl' => $this->getPluginManageUrl($request, 'outboxAction'),
                 ]);
                 return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('outboxDashboard.tpl')));
