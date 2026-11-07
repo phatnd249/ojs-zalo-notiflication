@@ -207,32 +207,92 @@ class ZaloReviewReminderController
             exit;
         }
 
+        $context = $request ? $request->getContext() : null;
+        $contextId = $context ? (int) $context->getId() : 0;
+        $user = $request ? $request->getUser() : null;
+
         $type = (string) $request->getUserVar('type');
+        $dateStr = date('Ymd');
         $reportDir = dirname(__DIR__) . '/reports';
-        $fileMap = [
-            '1_csv' => ['file' => 'Mau_1_Chi_tiet_tien_do_phan_bien.csv', 'mime' => 'text/csv; charset=utf-8'],
-            '1_doc' => ['file' => 'Mau_1_Chi_tiet_tien_do_phan_bien.doc', 'mime' => 'application/msword'],
-            '2_doc' => ['file' => 'Mau_2_Bao_cao_hieu_suat_KPI_phan_bien.doc', 'mime' => 'application/msword'],
-            '3_csv' => ['file' => 'Mau_3_Danh_gia_xep_loai_phan_bien_vien.csv', 'mime' => 'text/csv; charset=utf-8'],
-            '3_doc' => ['file' => 'Mau_3_Danh_gia_xep_loai_phan_bien_vien.doc', 'mime' => 'application/msword'],
+
+        // 1. Xuất Excel (.xls) với thiết kế chuyên nghiệp, bảng thống kê KPI và tên file chuẩn hóa
+        if ($type === '1_xls' || $type === '1_csv') {
+            require_once dirname(__DIR__) . '/services/reports/ZaloExcelReportService.inc.php';
+            $content = ZaloExcelReportService::generateProgressReportExcel($contextId, $context, $user);
+            $filename = 'Bao_cao_tien_do_phan_bien_' . $dateStr . '.xls';
+
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Transfer-Encoding: binary');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+            header('Content-Length: ' . strlen($content));
+            if (ob_get_level()) {
+                ob_clean();
+            }
+            flush();
+            echo $content;
+            exit;
+        }
+
+        if ($type === '3_xls' || $type === '3_csv') {
+            require_once dirname(__DIR__) . '/services/reports/ZaloExcelReportService.inc.php';
+            $content = ZaloExcelReportService::generateReviewerRatingReportExcel($contextId, $context, $user);
+            $filename = 'Bang_xep_loai_phan_bien_vien_' . $dateStr . '.xls';
+
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Transfer-Encoding: binary');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+            header('Pragma: public');
+            header('Content-Length: ' . strlen($content));
+            if (ob_get_level()) {
+                ob_clean();
+            }
+            flush();
+            echo $content;
+            exit;
+        }
+
+        // 2. Xuất văn bản Word (.doc) với tên file chuẩn hóa
+        $docMap = [
+            '1_doc' => [
+                'file' => 'Mau_1_Chi_tiet_tien_do_phan_bien.doc',
+                'downloadName' => 'Bao_cao_tien_do_phan_bien_' . $dateStr . '.doc',
+                'mime' => 'application/msword; charset=utf-8',
+            ],
+            '2_doc' => [
+                'file' => 'Mau_2_Bao_cao_hieu_suat_KPI_phan_bien.doc',
+                'downloadName' => 'Bao_cao_hieu_suat_KPI_phan_bien_' . $dateStr . '.doc',
+                'mime' => 'application/msword; charset=utf-8',
+            ],
+            '3_doc' => [
+                'file' => 'Mau_3_Danh_gia_xep_loai_phan_bien_vien.doc',
+                'downloadName' => 'Bang_xep_loai_phan_bien_vien_' . $dateStr . '.doc',
+                'mime' => 'application/msword; charset=utf-8',
+            ],
         ];
 
-        if (!isset($fileMap[$type])) {
+        if (!isset($docMap[$type])) {
             header('HTTP/1.0 404 Not Found');
             echo 'Báo cáo không tồn tại.';
             exit;
         }
 
-        $filePath = $reportDir . DIRECTORY_SEPARATOR . $fileMap[$type]['file'];
+        $filePath = $reportDir . DIRECTORY_SEPARATOR . $docMap[$type]['file'];
         if (!file_exists($filePath)) {
             header('HTTP/1.0 404 Not Found');
             echo 'Tệp báo cáo không tìm thấy trên hệ thống.';
             exit;
         }
 
-        $filename = $fileMap[$type]['file'];
+        $filename = $docMap[$type]['downloadName'];
         header('Content-Description: File Transfer');
-        header('Content-Type: ' . $fileMap[$type]['mime']);
+        header('Content-Type: ' . $docMap[$type]['mime']);
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Content-Transfer-Encoding: binary');
         header('Expires: 0');

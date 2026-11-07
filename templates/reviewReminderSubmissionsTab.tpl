@@ -499,21 +499,21 @@
                 </div>
 
                 <div class="zrd-export-buttons-grid">
-                    <!-- Button 1: Tiến độ (CSV/Word) -->
-                    <div class="zrd-export-card export-teal" onclick="window.location.href='{$downloadReportUrl}&type=1_csv';">
+                    <!-- Button 1: Tiến độ (Excel) -->
+                    <div class="zrd-export-card export-teal" onclick="window.location.href='{$downloadReportUrl}&type=1_xls';">
                         <div class="zrd-export-icon">
-                            <i class="fa fa-file-text-o"></i>
+                            <i class="fa fa-file-excel-o"></i>
                         </div>
                         <div class="zrd-export-label">
                             Xuất Báo Cáo Tiến độ
-                            <small>(CSV/Word)</small>
+                            <small>(Excel)</small>
                         </div>
                     </div>
 
                     <!-- Button 2: KPI Tháng (Word) -->
                     <div class="zrd-export-card export-blue" onclick="window.location.href='{$downloadReportUrl}&type=2_doc';">
                         <div class="zrd-export-icon">
-                            <i class="fa fa-briefcase"></i>
+                            <i class="fa fa-file-word-o"></i>
                         </div>
                         <div class="zrd-export-label">
                             Xuất Báo Cáo KPI Tháng
@@ -522,9 +522,9 @@
                     </div>
 
                     <!-- Button 3: Xếp loại PBV (Excel) -->
-                    <div class="zrd-export-card export-purple" onclick="window.location.href='{$downloadReportUrl}&type=3_csv';">
+                    <div class="zrd-export-card export-purple" onclick="window.location.href='{$downloadReportUrl}&type=3_xls';">
                         <div class="zrd-export-icon">
-                            <i class="fa fa-star"></i>
+                            <i class="fa fa-table"></i>
                         </div>
                         <div class="zrd-export-label">
                             Xuất Bảng Xếp loại PBV
