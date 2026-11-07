@@ -43,10 +43,42 @@ class ReviewReminderDashboardService
                 }
                 $publication = $submission->getCurrentPublication();
                 $navigation = MessageHelper::getNavigationData($submission, 0, (int) $submission->getStageId());
+
+                $sectionTitle = '';
+                $sectionId = 0;
+                if ($publication) {
+                    $sectionId = (int) $publication->getData('sectionId');
+                    if ($sectionId > 0) {
+                        try {
+                            $sectionDao = \DAORegistry::getDAO('SectionDAO');
+                            $secObj = $sectionDao ? $sectionDao->getById($sectionId, $contextId) : null;
+                            if ($secObj) {
+                                try {
+                                    $sectionTitle = (string) ($secObj->getLocalizedTitle() ?: '');
+                                } catch (\Throwable $ignored) {
+                                    $sectionTitle = (string) ($secObj->getTitle('vi_VN') ?: '');
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                        }
+                    }
+                }
+
+                $subTitle = "Bài báo #{$submissionId}";
+                if ($publication) {
+                    try {
+                        $subTitle = strip_tags((string) $publication->getLocalizedTitle());
+                    } catch (\Throwable $ignored) {
+                        $subTitle = strip_tags((string) ($publication->getData('title', 'vi_VN') ?: $subTitle));
+                    }
+                }
+
                 $grouped[$submissionId] = [
                     'id' => $submissionId,
-                    'title' => $publication ? strip_tags((string) $publication->getLocalizedTitle()) : "Bài báo #{$submissionId}",
+                    'title' => $subTitle ?: "Bài báo #{$submissionId}",
                     'authors' => MessageHelper::getAuthorsString($publication ?: $submission),
+                    'section' => $sectionTitle,
+                    'sectionId' => $sectionId,
                     'dateSubmitted' => self::formatDate($submission->getDateSubmitted()),
                     'stageName' => MessageHelper::getStageName((int) $submission->getStageId()),
                     'workflowUrl' => $navigation['workflowUrl'] ?? '',
@@ -1265,42 +1297,86 @@ class ReviewReminderDashboardService
         try {
             $statusPublished = defined('STATUS_PUBLISHED') ? STATUS_PUBLISHED : 3;
 
-            $sections = Capsule::table('sections as sec')
-                ->leftJoin('section_settings as ss', function ($join) {
-                    $join->on('ss.section_id', '=', 'sec.section_id')
-                         ->where('ss.setting_name', '=', 'title');
-                })
-                ->where('sec.journal_id', $contextId)
-                ->select(['sec.section_id', Capsule::raw('COALESCE(ss.setting_value, CONCAT("Chuyên mục #", sec.section_id)) as name')])
-                ->get();
+            // 1. Lấy danh sách toàn bộ chuyên mục đang có của tạp chí (chuẩn SectionDAO)
+            $sectionsList = [];
+            if (class_exists('DAORegistry', false)) {
+                try {
+                    $sectionDao = \DAORegistry::getDAO('SectionDAO');
+                    if ($sectionDao && method_exists($sectionDao, 'getByContextId')) {
+                        $iterator = $sectionDao->getByContextId($contextId);
+                        while ($iterator && $secObj = $iterator->next()) {
+                            $sectionsList[] = [
+                                'id' => (int) $secObj->getId(),
+                                'name' => (string) ($secObj->getLocalizedTitle() ?: 'Chuyên mục #' . $secObj->getId()),
+                            ];
+                        }
+                    }
+                } catch (\Throwable $ignored) {
+                }
+            }
+
+            // Fallback qua Capsule nếu DAO không khả dụng (môi trường test độc lập)
+            if (empty($sectionsList)) {
+                $rows = Capsule::table('sections as sec')
+                    ->leftJoin('section_settings as ss', function ($join) {
+                        $join->on('ss.section_id', '=', 'sec.section_id')
+                             ->where('ss.setting_name', '=', 'title');
+                    })
+                    ->where('sec.journal_id', $contextId)
+                    ->orderBy('sec.seq')
+                    ->orderBy('sec.section_id')
+                    ->select(['sec.section_id', Capsule::raw('COALESCE(ss.setting_value, CONCAT("Chuyên mục #", sec.section_id)) as name')])
+                    ->get();
+                foreach ($rows as $r) {
+                    $sectionsList[] = [
+                        'id' => (int) $r->section_id,
+                        'name' => (string) $r->name,
+                    ];
+                }
+            }
+
+            if (empty($sectionsList)) {
+                return [];
+            }
 
             $stats = [];
-            foreach ($sections as $sec) {
-                $secId = (int) $sec->section_id;
+            foreach ($sectionsList as $sec) {
+                $secId = (int) $sec['id'];
                 $total = Capsule::table('submissions as s')
                     ->join('publications as p', 's.current_publication_id', '=', 'p.publication_id')
                     ->where('s.context_id', $contextId)
                     ->where('p.section_id', $secId)
                     ->count();
 
-                if ($total === 0) continue;
-
-                $completed = Capsule::table('submissions as s')
-                    ->join('publications as p', 's.current_publication_id', '=', 'p.publication_id')
-                    ->where('s.context_id', $contextId)
-                    ->where('p.section_id', $secId)
-                    ->where('s.status', $statusPublished)
-                    ->count();
+                $completed = 0;
+                if ($total > 0) {
+                    $completed = Capsule::table('submissions as s')
+                        ->join('publications as p', 's.current_publication_id', '=', 'p.publication_id')
+                        ->where('s.context_id', $contextId)
+                        ->where('p.section_id', $secId)
+                        ->where('s.status', $statusPublished)
+                        ->count();
+                }
 
                 $stats[] = [
-                    'name' => (string) $sec->name,
+                    'id' => $secId,
+                    'name' => (string) $sec['name'],
                     'total' => $total,
                     'completed' => $completed,
-                    'percent' => $total > 0 ? round(($completed / $total) * 100) : 0,
+                    'percent' => $total > 0 ? (int) round(($completed / $total) * 100) : 0,
                 ];
             }
 
             if (!empty($stats)) {
+                // Sắp xếp: Ưu tiên các chuyên mục có bài nộp trước, sau đó đến các chuyên mục mới
+                usort($stats, function ($a, $b) {
+                    if ($b['total'] !== $a['total']) {
+                        return $b['total'] - $a['total'];
+                    }
+                    return $a['id'] - $b['id'];
+                });
+
+                // Hiển thị tối đa 4 chuyên mục tiêu biểu trên biểu đồ
                 $topStats = array_slice($stats, 0, 4);
                 $maxVal = 0;
                 foreach ($topStats as $ts) {
@@ -1309,12 +1385,16 @@ class ReviewReminderDashboardService
                     }
                 }
                 if ($maxVal <= 0) {
-                    $maxVal = 20;
+                    $maxVal = 10;
                 }
 
-                foreach ($topStats as &$st) {
-                    $st['barHCompleted'] = max(4, (int) round(($st['completed'] / $maxVal) * 160));
-                    $st['barHTotal'] = max(6, (int) round(($st['total'] / $maxVal) * 160));
+                $secCount = count($topStats);
+                $step = $secCount > 0 ? (int) round(460 / $secCount) : 120;
+
+                foreach ($topStats as $idx => &$st) {
+                    $st['barHCompleted'] = $st['completed'] > 0 ? max(6, (int) round(($st['completed'] / $maxVal) * 160)) : 0;
+                    $st['barHTotal'] = $st['total'] > 0 ? max(8, (int) round(($st['total'] / $maxVal) * 160)) : 0;
+                    $st['xBase'] = 50 + ($idx * $step) + (int) round(($step - 65) / 2);
                 }
                 unset($st);
 

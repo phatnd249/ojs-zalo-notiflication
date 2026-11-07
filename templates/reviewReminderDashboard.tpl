@@ -52,7 +52,7 @@
             <section class="zrd-card" data-submission-id="{$submission.id}">
                 <header class="zrd-card-header">
                     <div>
-                        <div class="zrd-id">Bài #{$submission.id} · {$submission.stageName|escape}</div>
+                        <div class="zrd-id">Bài #{$submission.id} · {$submission.stageName|escape}{if !empty($submission.section)} · <span style="display:inline-block; padding:0 6px; background:#e0f2fe; color:#0369a1; border-radius:4px; font-weight:500;">{$submission.section|escape}</span>{/if}</div>
                         <h4>{if $submission.workflowUrl}<a href="{$submission.workflowUrl|escape}" target="_blank" rel="noopener">{$submission.title|escape}</a>{else}{$submission.title|escape}{/if}</h4>
                         <div class="zrd-meta"><span><i class="fa fa-user"></i> {$submission.authors|escape}</span><span><i class="fa fa-calendar"></i> Nộp ngày {$submission.dateSubmitted|escape}</span></div>
                     </div>

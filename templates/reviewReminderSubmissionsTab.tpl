@@ -243,18 +243,22 @@
                         <text x="30" y="204" fill="#94a3b8" font-size="11" text-anchor="end">0</text>
 
                         {foreach from=$sectionStats item=sec key=k}
-                        {assign var="xBase" value=$k*120+75}
+                        {assign var="xBase" value=$sec.xBase|default:($k*120+75)}
                         {assign var="barH1" value=$sec.barHCompleted|default:($sec.completed*9)}
                         {if $barH1 > 170}{assign var="barH1" value=170}{/if}
-                        <rect x="{$xBase}" y="{200-$barH1}" width="30" height="{$barH1}" rx="2" fill="#1877f2" class="zrd-bar" />
-                        <text x="{$xBase+15}" y="{192-$barH1}" fill="#1e293b" font-size="11" font-weight="bold" text-anchor="middle">{$sec.completed}</text>
+                        <rect x="{$xBase}" y="{if $barH1 > 0}{200-$barH1}{else}198{/if}" width="30" height="{if $barH1 > 0}{$barH1}{else}2{/if}" rx="2" fill="#1877f2" class="zrd-bar">
+                            <title>{$sec.name|escape}: {$sec.completed} hoàn thành / {$sec.total} bài</title>
+                        </rect>
+                        <text x="{$xBase+15}" y="{if $barH1 > 0}{192-$barH1}{else}190{/if}" fill="#1e293b" font-size="11" font-weight="bold" text-anchor="middle">{$sec.completed}</text>
 
                         {assign var="barH2" value=$sec.barHTotal|default:($sec.total*9)}
                         {if $barH2 > 170}{assign var="barH2" value=170}{/if}
-                        <rect x="{$xBase+33}" y="{200-$barH2}" width="30" height="{$barH2}" rx="2" fill="#bae0ff" class="zrd-bar" />
-                        <text x="{$xBase+48}" y="{192-$barH2}" fill="#64748b" font-size="11" text-anchor="middle">{$sec.total}</text>
+                        <rect x="{$xBase+33}" y="{if $barH2 > 0}{200-$barH2}{else}198{/if}" width="30" height="{if $barH2 > 0}{$barH2}{else}2{/if}" rx="2" fill="#bae0ff" class="zrd-bar">
+                            <title>{$sec.name|escape}: {$sec.total} bài tổng cộng</title>
+                        </rect>
+                        <text x="{$xBase+48}" y="{if $barH2 > 0}{192-$barH2}{else}190{/if}" fill="#64748b" font-size="11" text-anchor="middle">{$sec.total}</text>
 
-                        <text x="{$xBase+31}" y="216" fill="#334155" font-size="11" font-weight="500" text-anchor="middle">{$sec.name|truncate:18:'...'}</text>
+                        <text x="{$xBase+31}" y="216" fill="#334155" font-size="11" font-weight="500" text-anchor="middle" title="{$sec.name|escape}">{$sec.name|truncate:18:'...'}</text>
                         {/foreach}
                     </svg>
                     {else}
@@ -320,7 +324,7 @@
                             data-sub-id="{$sub.id}"
                             data-status="{$rowClass}"
                             data-days-left="{$sub.daysLeft|default:$primaryReviewer.daysLeft}"
-                            data-search="{$sub.id} {$sub.title|escape:'javascript'} {$sub.authors|escape:'javascript'} {$sub.reviewerName|default:$primaryReviewer.name|escape:'javascript'}">
+                            data-search="{$sub.id} {$sub.title|escape:'javascript'} {$sub.authors|escape:'javascript'} {$sub.reviewerName|default:$primaryReviewer.name|escape:'javascript'} {$sub.section|default:''|escape:'javascript'}">
                             
                             <!-- Mã bài báo -->
                             <td class="zrd-td-id">
@@ -334,6 +338,13 @@
                                 <a href="{$sub.workflowUrl|default:'#'}" class="zrd-article-link" target="_blank" title="Xem quy trình">
                                     {$sub.title|escape}
                                 </a>
+                                {if !empty($sub.section)}
+                                    <div style="font-size: 11px; color: #64748b; margin-top: 3px;">
+                                        <span style="display: inline-block; padding: 1px 6px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 4px; font-weight: 500;">
+                                            <i class="fa fa-folder-open-o" style="margin-right: 3px; color: #0284c7;"></i>{$sub.section|escape}
+                                        </span>
+                                    </div>
+                                {/if}
                             </td>
 
                             <!-- Phản biện viên -->
