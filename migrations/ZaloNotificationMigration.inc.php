@@ -31,7 +31,20 @@ class ZaloNotificationMigration extends Migration
 
             $table->unique(['dedupe_key'], 'zalo_outbox_dedupe_key');
             $table->index(['status', 'available_at'], 'zalo_outbox_ready');
+            $table->index(['status', 'locked_at'], 'zalo_outbox_stale');
+            $table->index(['context_id', 'status', 'updated_at'], 'zalo_outbox_cleanup');
             $table->index(['context_id'], 'zalo_outbox_context');
         });
+    }
+
+    public function down()
+    {
+        Capsule::schema()->dropIfExists('zalo_notification_outbox');
+
+        // Xoá cờ schema để lần cài lại không bỏ qua bước kiểm tra/tạo bảng.
+        if (class_exists('ZaloNotificationPlugin')) {
+            @unlink(ZaloNotificationPlugin::getDataDir() . '/.outbox_schema_ok');
+            @unlink(ZaloNotificationPlugin::getDataDir() . '/.outbox_indexes_v2');
+        }
     }
 }

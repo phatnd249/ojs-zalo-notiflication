@@ -29,6 +29,27 @@
 					Chưa cấu hình API Key. Plugin sẽ không gửi được tin cho đến khi khóa được lưu.
 				{/if}
 			</p>
+			{if $apiKeyConfigured}
+				<label style="display: flex; align-items: center; gap: 6px; margin-top: 8px; color: #dc2626; font-size: 0.85em; cursor: pointer;">
+					<input type="checkbox" name="clearApiKey" id="clearApiKey" value="1" style="cursor: pointer;" />
+					<span>Xóa / Thu hồi API Key đã lưu (Plugin sẽ ngừng gửi tin cho đến khi nhập lại key mới)</span>
+				</label>
+			{/if}
+		</div>
+
+		{* ========== CHẾ ĐỘ GỬI TIN NHẮN (QUEUE-FIRST MODE) ========== *}
+		<div id="zaloDispatchModeSection" style="margin-bottom: 20px; padding: 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px;">
+			<h4 style="margin: 0 0 6px; color: #166534; font-size: 1.05em; display: flex; align-items: center; gap: 8px;">
+				<i class="fa fa-bolt" style="color: #16a34a;"></i> Chế độ gửi tin bất đồng bộ (Queue-First)
+				<span style="font-size: 0.75em; background: #22c55e; color: #ffffff; padding: 2px 7px; border-radius: 12px; font-weight: 600;">Khuyên dùng</span>
+			</h4>
+			<p style="color: #15803d; margin: 0 0 10px; font-size: 0.85em; line-height: 1.45;">
+				Khi kích hoạt, mọi thao tác chuyển giai đoạn bài báo, ra quyết định, mời phản biện hoặc nộp bài sẽ đưa tin nhắn vào Hàng đợi Outbox trong vòng vài mili-giây, giúp thao tác của Biên tập viên và Tác giả diễn ra tức thì mà <strong>không bị đơ hoặc chậm trang web</strong>. Tiến trình chạy ngầm (Cron) sẽ tự động gửi tin đến Zalo.
+			</p>
+			<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #166534; font-size: 0.9em;">
+				<input type="checkbox" name="queueFirstMode" id="queueFirstMode" value="1" {if $queueFirstMode}checked="checked"{/if} style="width: 17px; height: 17px; cursor: pointer;" />
+				<span>Bật chế độ Hàng đợi bất đồng bộ (Queue-First Dispatch) — Tối ưu tốc độ chuyển giai đoạn</span>
+			</label>
 		</div>
 
 		{* ========== THỜI GIAN LƯU TRỮ DỮ LIỆU ========== *}
@@ -61,6 +82,82 @@
 						<span style="color: #475569; font-size: 0.9em; font-weight: 500;">ngày</span>
 					</div>
 					<small style="color: #64748b; display: block; margin-top: 5px; font-size: 0.8em;">Mặc định: 30 ngày. Dọn các tin nhắn đã gửi hoặc thất bại.</small>
+				</div>
+			</div>
+		</div>
+
+		{* ========== LỊCH NHẮC HẠN PHẢN BIỆN TỰ ĐỘNG ========== *}
+		<div id="zaloReviewScheduleSection" style="margin-bottom: 20px; padding: 16px; background: #f0f7ff; border: 1px solid #bae0ff; border-radius: 8px;">
+			<h4 style="margin: 0 0 6px; color: #0050b3; font-size: 1.05em; display: flex; align-items: center; gap: 8px;">
+				<i class="fa fa-bell" style="color: #1890ff;"></i> Lịch nhắc hạn phản biện tự động
+			</h4>
+			<p style="color: #264a7f; margin: 0 0 12px; font-size: 0.85em; line-height: 1.45;">
+				Hệ thống tự động quét và gửi tin nhắn Zalo nhắc nhở cho Phản biện viên và Biên tập viên khi sắp đến hạn hoặc quá hạn nộp bài phản biện.
+			</p>
+
+			<!-- Nhắc trước hạn chót: Mặc định 4 ngày, có thể điều chỉnh -->
+			<div style="background: #ffffff; border: 1px solid #d9d9d9; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+				<label for="reviewReminderBeforeDays" style="display:block; font-weight: 600; margin-bottom: 6px; color: #262626; font-size: 0.9em;">
+					<i class="fa fa-calendar-check-o" style="color: #52c41a;"></i> Nhắc trước hạn chót (Upcoming Reminder):
+				</label>
+				<div style="display: flex; align-items: center; gap: 8px;">
+					<span style="color: #595959; font-size: 0.85em;">Trước</span>
+					<input type="number" name="reviewReminderBeforeDays" id="reviewReminderBeforeDays" min="0" max="30" value="{$reviewReminderBeforeDays|escape}" style="width: 70px; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; text-align: center;" />
+					<span style="color: #595959; font-size: 0.85em; font-weight: 500;">ngày</span>
+				</div>
+				<small style="color: #8c8c8c; display: block; margin-top: 5px; font-size: 0.78em;">Mặc định: 4 ngày. Nhập 0 nếu không muốn gửi thông báo trước hạn.</small>
+			</div>
+
+			<!-- Nhắc đúng ngày hết hạn -->
+			<div style="background: #ffffff; border: 1px solid #d9d9d9; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+				<label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #262626; font-size: 0.9em;">
+					<input type="checkbox" name="reviewReminderOnDueDate" id="reviewReminderOnDueDate" value="1" {if $reviewReminderOnDueDate}checked="checked"{/if} style="width: 16px; height: 16px; cursor: pointer;" />
+					<span>Nhắc vào đúng ngày hết hạn (Due Date Reminder)</span>
+				</label>
+				<p style="color: #595959; margin: 4px 0 0 24px; font-size: 0.82em;">Gửi tin nhắc vào đúng ngày hạn chót nộp kết quả phản biện (Hôm nay là hạn chót).</p>
+			</div>
+
+			<!-- Tần suất quá hạn & Số lần tối đa -->
+			<div style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px;">
+				<div style="flex: 1; min-width: 220px; background: #ffffff; border: 1px solid #d9d9d9; border-radius: 6px; padding: 12px;">
+					<label for="reviewReminderOverdueFrequency" style="display:block; font-weight: 600; margin-bottom: 6px; color: #262626; font-size: 0.9em;">
+						<i class="fa fa-repeat" style="color: #fa8c16;"></i> Tần suất nhắc khi quá hạn:
+					</label>
+					<div style="display: flex; align-items: center; gap: 8px;">
+						<span style="color: #595959; font-size: 0.85em;">Sau mỗi</span>
+						<input type="number" name="reviewReminderOverdueFrequency" id="reviewReminderOverdueFrequency" min="1" max="30" value="{$reviewReminderOverdueFrequency|escape}" style="width: 70px; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; text-align: center;" />
+						<span style="color: #595959; font-size: 0.85em; font-weight: 500;">ngày</span>
+					</div>
+					<small style="color: #8c8c8c; display: block; margin-top: 5px; font-size: 0.78em;">Mặc định: 2 ngày. Cách 2 ngày nhắc 1 lần để tránh làm phiền.</small>
+				</div>
+
+				<div style="flex: 1; min-width: 220px; background: #ffffff; border: 1px solid #d9d9d9; border-radius: 6px; padding: 12px;">
+					<label for="reviewReminderMaxOverdueCount" style="display:block; font-weight: 600; margin-bottom: 6px; color: #262626; font-size: 0.9em;">
+						<i class="fa fa-ban" style="color: #f5222d;"></i> Số lần nhắc quá hạn tối đa:
+					</label>
+					<div style="display: flex; align-items: center; gap: 8px;">
+						<span style="color: #595959; font-size: 0.85em;">Tối đa</span>
+						<input type="number" name="reviewReminderMaxOverdueCount" id="reviewReminderMaxOverdueCount" min="1" max="20" value="{$reviewReminderMaxOverdueCount|escape}" style="width: 70px; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; text-align: center;" />
+						<span style="color: #595959; font-size: 0.85em; font-weight: 500;">lần</span>
+					</div>
+					<small style="color: #8c8c8c; display: block; margin-top: 5px; font-size: 0.78em;">Mặc định: 3 lần. Sau 3 lần tự động dừng để BTV tìm người thay thế.</small>
+				</div>
+			</div>
+
+			<!-- Đối tượng nhận tin -->
+			<div style="background: #ffffff; border: 1px solid #d9d9d9; border-radius: 6px; padding: 10px 14px;">
+				<span style="display: block; font-weight: 600; color: #262626; font-size: 0.9em; margin-bottom: 8px;">
+					<i class="fa fa-users" style="color: #1890ff;"></i> Đối tượng nhận tin nhắc tự động:
+				</span>
+				<div style="display: flex; gap: 20px; flex-wrap: wrap;">
+					<label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85em; color: #262626;">
+						<input type="checkbox" name="reviewReminderSendReviewer" id="reviewReminderSendReviewer" value="1" {if $reviewReminderSendReviewer}checked="checked"{/if} style="cursor: pointer;" />
+						<span>Phản biện viên (Reviewer)</span>
+					</label>
+					<label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85em; color: #262626;">
+						<input type="checkbox" name="reviewReminderSendEditor" id="reviewReminderSendEditor" value="1" {if $reviewReminderSendEditor}checked="checked"{/if} style="cursor: pointer;" />
+						<span>Biên tập viên phụ trách (Editor)</span>
+					</label>
 				</div>
 			</div>
 		</div>

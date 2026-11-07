@@ -25,6 +25,7 @@ class ReminderAssignment
     }
 }
 
+require_once dirname(__DIR__) . '/services/review/ReviewReminderService.inc.php';
 require_once dirname(__DIR__) . '/handlers/ReviewNotificationHandler.inc.php';
 
 $contextId = 77;
@@ -40,7 +41,7 @@ if (ReviewNotificationHandler::wasRemindedToday(new ReminderAssignment(date('Y-m
     failReminderDeduplicationTest('Lượt nhắc ngày cũ bị nhận diện nhầm là hôm nay.');
 }
 
-$reviewSource = file_get_contents(dirname(__DIR__) . '/handlers/ReviewNotificationHandler.inc.php');
+$reviewSource = file_get_contents(dirname(__DIR__) . '/services/review/ReviewReminderService.inc.php');
 $editorialSource = file_get_contents(dirname(__DIR__) . '/handlers/EditorialNotificationHandler.inc.php');
 if (strpos($reviewSource, 'AND (ra.date_reminded IS NULL OR DATE(ra.date_reminded) < CURRENT_DATE)') === false
     || strpos($reviewSource, '$dailyKey = self::getDailyReminderKey($contextId, $reviewId)') === false

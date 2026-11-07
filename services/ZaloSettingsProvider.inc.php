@@ -17,10 +17,24 @@ class ZaloSettingsProvider
             $groups = [];
         }
 
+        $beforeDaysRaw = $pluginSettingsDao->getSetting($contextId, self::PLUGIN_NAME, 'reviewReminderBeforeDays');
+        $beforeDays = ($beforeDaysRaw === null) ? 4 : max(0, min(30, (int) $beforeDaysRaw));
+        $onDueDate = $pluginSettingsDao->getSetting($contextId, self::PLUGIN_NAME, 'reviewReminderOnDueDate');
+        $overdueFreq = (int) $pluginSettingsDao->getSetting($contextId, self::PLUGIN_NAME, 'reviewReminderOverdueFrequency');
+        $maxOverdue = (int) $pluginSettingsDao->getSetting($contextId, self::PLUGIN_NAME, 'reviewReminderMaxOverdueCount');
+        $sendReviewer = $pluginSettingsDao->getSetting($contextId, self::PLUGIN_NAME, 'reviewReminderSendReviewer');
+        $sendEditor = $pluginSettingsDao->getSetting($contextId, self::PLUGIN_NAME, 'reviewReminderSendEditor');
+
         return [
             'botId' => $botId,
             'apiKey' => $apiKey,
             'recipientGroups' => $groups,
+            'reviewReminderBeforeDays' => $beforeDays,
+            'reviewReminderOnDueDate' => ($onDueDate === null) ? true : (bool) $onDueDate,
+            'reviewReminderOverdueFrequency' => ($overdueFreq > 0) ? $overdueFreq : 2,
+            'reviewReminderMaxOverdueCount' => ($maxOverdue > 0) ? $maxOverdue : 3,
+            'reviewReminderSendReviewer' => ($sendReviewer === null) ? true : (bool) $sendReviewer,
+            'reviewReminderSendEditor' => ($sendEditor === null) ? true : (bool) $sendEditor,
         ];
     }
 

@@ -92,6 +92,17 @@ assertGatewayResult(
     json_encode(['errorCode' => 0, 'data' => []])
 );
 
+$sanitized = ZaloGatewayResponse::sanitizeDiagnostic("line1\nline2 " . str_repeat('x', 300));
+if (strpos($sanitized, "\n") !== false || strlen($sanitized) > 200) {
+    fwrite(STDERR, "Gateway diagnostic sanitizer should flatten and cap messages.\n");
+    exit(1);
+}
+$clientSource = file_get_contents(dirname(__DIR__) . DIRECTORY_SEPARATOR . 'ZaloApiClient.inc.php');
+if (strpos($clientSource, 'self::sanitizeDiagnostic') !== false) {
+    fwrite(STDERR, "ZaloApiClient still references the moved sanitizeDiagnostic method.\n");
+    exit(1);
+}
+
 if (ZaloApiClient::isRetryableStatus('Thành công')) {
     fwrite(STDERR, "Success should not be retryable.\n");
     exit(1);

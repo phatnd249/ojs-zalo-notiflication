@@ -175,6 +175,11 @@ class PostSaveNotificationDispatcher
         if (self::$plugin) {
             StageChangeHandler::setPlugin(self::$plugin);
         }
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        @ignore_user_abort(true);
+        @set_time_limit(0);
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
         }

@@ -19,11 +19,25 @@ class ZaloOutboxRepository
             return true;
         }
 
+        $flagFile = class_exists('ZaloNotificationPlugin') ? ZaloNotificationPlugin::getDataDir() . '/.outbox_schema_ok' : '';
+        $indexFlagFile = $flagFile !== '' ? dirname($flagFile) . '/.outbox_indexes_v2' : '';
+        if ($flagFile && file_exists($flagFile)) {
+            self::$schemaReady = true;
+            self::ensureIndexes($indexFlagFile);
+            return true;
+        }
+
         try {
             if (!Capsule::schema()->hasTable(self::TABLE)) {
                 (new ZaloNotificationMigration())->up();
             }
             self::$schemaReady = Capsule::schema()->hasTable(self::TABLE);
+            if (self::$schemaReady) {
+                if ($flagFile) {
+                    @touch($flagFile);
+                }
+                self::ensureIndexes($indexFlagFile);
+            }
         } catch (\Throwable $e) {
             // Một request khác có thể vừa tạo bảng sau lần kiểm tra đầu tiên.
             try {
@@ -40,6 +54,23 @@ class ZaloOutboxRepository
         }
 
         return self::$schemaReady === true;
+    }
+
+    private static function ensureIndexes(string $flagFile): void
+    {
+        if ($flagFile === '' || file_exists($flagFile)) {
+            return;
+        }
+
+        try {
+            Capsule::schema()->table(self::TABLE, function ($table) {
+                $table->index(['status', 'locked_at'], 'zalo_outbox_stale');
+                $table->index(['context_id', 'status', 'updated_at'], 'zalo_outbox_cleanup');
+            });
+        } catch (\Throwable $e) {
+        }
+
+        @touch($flagFile);
     }
 
     public static function enqueue(
@@ -60,7 +91,26 @@ class ZaloOutboxRepository
         }
 
         $eventType = preg_replace('/[^A-Z0-9_-]/i', '', $eventType) ?: 'DIRECT';
-        // Chặn hook trùng trong cùng cửa sổ 5 phút, nhưng vẫn cho phép nghiệp vụ hợp lệ lặp lại sau đó.
+        $recipientsJson = json_encode($recipients, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+
+        // 1. Kiểm tra cửa sổ trượt 5 phút để tránh lỗi ranh giới floor(time()/300).
+        // So khớp cả người nhận để không chặn nhầm tin cùng nội dung gửi cho nhóm khác.
+        try {
+            $cutoff = date('Y-m-d H:i:s', time() - 300);
+            $recent = Capsule::table(self::TABLE)
+                ->where('context_id', $contextId)
+                ->where('event_type', substr($eventType, 0, 64))
+                ->where('created_at', '>=', $cutoff)
+                ->where('message_text', $messageText)
+                ->where('recipients_json', $recipientsJson)
+                ->first();
+            if ($recent) {
+                return 'Đã xếp hàng (trùng đã bỏ qua)';
+            }
+        } catch (\Throwable $ignored) {
+        }
+
+        // 2. Chặn hook trùng trong cùng cửa sổ 5 phút, nhưng vẫn cho phép nghiệp vụ hợp lệ lặp lại sau đó.
         $dedupeWindow = (string) floor(time() / 300);
         $dedupeKey = hash(
             'sha256',
@@ -75,7 +125,7 @@ class ZaloOutboxRepository
                 'event_type' => substr($eventType, 0, 64),
                 'dedupe_key' => $dedupeKey,
                 'message_text' => $messageText,
-                'recipients_json' => json_encode($recipients, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                'recipients_json' => $recipientsJson,
                 'status' => 'pending',
                 'attempts' => 0,
                 'available_at' => $now,
@@ -153,13 +203,33 @@ class ZaloOutboxRepository
         });
     }
 
+    public static function releaseClaim(int $outboxId): void
+    {
+        if (!self::ensureSchema()) {
+            return;
+        }
+
+        $row = Capsule::table(self::TABLE)->where('outbox_id', $outboxId)->first();
+        if (!$row) {
+            return;
+        }
+
+        Capsule::table(self::TABLE)
+            ->where('outbox_id', $outboxId)
+            ->where('status', 'processing')
+            ->update([
+                'status' => 'pending',
+                'attempts' => max(0, (int) $row->attempts - 1),
+                'locked_at' => null,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+    }
+
     public static function markSent(int $outboxId): void
     {
         $now = date('Y-m-d H:i:s');
         Capsule::table(self::TABLE)->where('outbox_id', $outboxId)->update([
             'status' => 'sent',
-            'message_text' => '',
-            'recipients_json' => '[]',
             'locked_at' => null,
             'sent_at' => $now,
             'last_error' => null,

@@ -1,0 +1,731 @@
+.zalo-log-container {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #25323d;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 4px 2px 14px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 1. Header */
+.zalo-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0 0 16px 0;
+    background: transparent;
+    border-bottom: none;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 2px;
+}
+
+.zalo-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.zalo-header-title {
+    margin: 0;
+    font-size: 1.35em;
+    font-weight: 700;
+    color: #0066a6;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.25;
+}
+
+.zalo-header-subtitle {
+    margin: 0;
+    color: #65717c;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.zalo-header-retention {
+    font-size: 13.5px;
+    color: #1e293b;
+    background: #eef5fa;
+    border: 1px solid #d8e7f1;
+    border-radius: 18px;
+    padding: 6px 13px;
+    white-space: nowrap;
+}
+
+.zalo-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.zalo-stat-chip {
+    font-size: 13.5px;
+    color: #1e293b;
+    background: #eef5fa;
+    border: 1px solid #d8e7f1;
+    padding: 6px 13px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.zalo-stat-chip strong {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.zalo-stat-chip.is-queue.is-overdue,
+.zalo-stat-chip.is-queue.has-error {
+    background: #fff1f0;
+    border-color: #ffc9c5;
+    color: #a42620;
+}
+
+.zalo-stat-chip.is-queue strong.text-danger {
+    color: #a42620;
+}
+
+/* 2. KPI Ribbon (Thanh thông số tinh gọn) */
+.zsw-container {
+    background: transparent;
+    border: none;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.zsw-ribbon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f6f9fb;
+    border: 1px solid #dce5eb;
+    border-radius: 6px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.zsw-date-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zsw-quick-date {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.zsw-quick-date:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.zsw-quick-date.active {
+    background: #0066a6;
+    color: #ffffff;
+    border-color: #0066a6;
+}
+
+.zsw-date-group input[type="date"] {
+    font-size: 13px;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #334155;
+    height: 32px;
+}
+
+.zsw-btn-date-filter {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.zsw-btn-date-filter:hover {
+    background: #dbeafe;
+}
+
+/* KPI Group */
+.zsw-kpi-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.zsw-kpi-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 16px;
+    border: 1px solid #d8e7f1;
+    background: #ffffff;
+    color: #334155;
+    white-space: nowrap;
+}
+
+.zsw-kpi-pill strong {
+    font-weight: 700;
+    font-size: 13.5px;
+}
+
+.zsw-kpi-pill.is-sent {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.zsw-kpi-pill.is-delivered {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.zsw-kpi-pill.is-failed {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.zsw-kpi-pill.is-failed.has-alert {
+    background: #fee2e2;
+    border-color: #f87171;
+    color: #b91c1c;
+    box-shadow: 0 0 0 1px #f87171;
+}
+
+.zsw-kpi-pill.is-overdue {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.zsw-kpi-pill.is-overdue.has-alert {
+    background: #fff1f0;
+    border-color: #fca5a5;
+    color: #b91c1c;
+    box-shadow: 0 0 0 1px #fca5a5;
+}
+
+.zsw-kpi-pill.is-duesoon {
+    border-color: #fef08a;
+    background: #fefce8;
+    color: #a16207;
+}
+
+.zsw-drawer-toggle {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #0066a6;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s ease;
+}
+
+.zsw-drawer-toggle:hover {
+    background: #f0f9ff;
+    border-color: #7dd3fc;
+}
+
+/* 3. Collapsible Drawer (Chi tiết thống kê) */
+.zsw-drawer {
+    background: #f8fafc;
+    border: 1px solid #dce5eb;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 14px 16px;
+    margin-top: -12px;
+    margin-bottom: 12px;
+}
+
+.zsw-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.zsw-drawer-title {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zsw-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.zsw-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.zsw-card-header {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #475569;
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.zsw-badge-tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: none;
+}
+
+.zsw-stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.zsw-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #475569;
+    padding: 2px 0;
+}
+
+.zsw-stat-val {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: #1e293b;
+}
+
+.zsw-val-delivered { color: #16a34a; }
+.zsw-val-failed    { color: #dc2626; }
+.zsw-val-retrying  { color: #d97706; }
+.zsw-val-overdue   { color: #dc2626; font-weight: 700; }
+.zsw-val-duesoon   { color: #d97706; }
+
+.zsw-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.zsw-activity-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.zsw-act-icon {
+    font-weight: bold;
+    display: inline-block;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.zsw-act-icon.is-success { color: #16a34a; }
+.zsw-act-icon.is-danger  { color: #dc2626; }
+.zsw-act-icon.is-warning { color: #d97706; }
+
+.zsw-act-time {
+    color: #94a3b8;
+    font-size: 11.5px;
+    flex-shrink: 0;
+}
+
+.zsw-act-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.zsw-empty-act {
+    color: #94a3b8;
+    font-size: 12.5px;
+    font-style: italic;
+    padding: 8px 0;
+    text-align: center;
+}
+
+/* 4. Toolbar */
+.zalo-log-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #f6f9fb;
+    border: 1px solid #dce5eb;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.zalo-toolbar-filters {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.zalo-filter-label {
+    font-weight: 600;
+    color: #475569;
+    font-size: 13.5px;
+}
+
+.zalo-select {
+    font-size: 13.5px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid #b8c5ce;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1e293b;
+    cursor: pointer;
+    min-width: 170px;
+}
+
+.zalo-select:focus {
+    outline: none;
+    border-color: #0066a6;
+    box-shadow: 0 0 0 2px rgba(0, 102, 166, 0.15);
+}
+
+.zalo-search-box {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-width: 260px;
+    flex: 1;
+    max-width: 400px;
+}
+
+.zalo-search-icon {
+    position: absolute;
+    left: 10px;
+    color: #7d8b95;
+    font-size: 13.5px;
+    pointer-events: none;
+}
+
+.zalo-search-input {
+    width: 100%;
+    height: 36px;
+    font-size: 13.5px;
+    padding: 0 28px 0 32px;
+    border: 1px solid #b8c5ce;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1e293b;
+    transition: all 0.15s ease;
+}
+
+.zalo-search-input:focus {
+    outline: none;
+    border-color: #0066a6;
+    box-shadow: 0 0 0 2px rgba(0, 102, 166, 0.15);
+}
+
+.zalo-search-clear {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.zalo-search-clear:hover {
+    color: #475569;
+}
+
+.zalo-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.zalo-btn {
+    height: 36px;
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 0 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.zalo-btn:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.zalo-btn-primary {
+    background: #0066a6;
+    color: #ffffff;
+    border-color: #0066a6;
+}
+
+.zalo-btn-primary:hover {
+    background: #00558b;
+    border-color: #00558b;
+}
+
+/* 5. Table Wrap & Table */
+.zalo-log-table-wrap {
+    background: #ffffff;
+    border: 1px solid #d8e0e6;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin-bottom: 14px;
+}
+
+.zalo-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 850px;
+}
+
+.zalo-log-table thead th {
+    background: #fbfcfd;
+    padding: 11px 13px;
+    text-align: left;
+    font-weight: 600;
+    color: #52616d;
+    border-bottom: 1px solid #dfe5e9;
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.zalo-log-table tbody td {
+    padding: 12px 13px;
+    border-bottom: 1px solid #edf0f2;
+    color: #334155;
+    vertical-align: top;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.zalo-log-table tbody tr:hover td {
+    background: #f8fafc;
+}
+
+.zalo-log-table .col-time {
+    white-space: nowrap;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.zalo-log-table .col-id {
+    text-align: center;
+    font-weight: 600;
+    color: #0066a6;
+    font-size: 13.5px;
+}
+
+.zalo-log-table .col-title {
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 13.5px;
+    word-break: break-word;
+}
+
+.zalo-log-table .col-detail {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-info    { background: #dbeafe; color: #1d4ed8; }
+.badge-warning { background: #fef3c7; color: #b45309; }
+.badge-error   { background: #fee2e2; color: #dc2626; }
+
+.badge-submission       { background: #d1fae5; color: #065f46; }
+.badge-decision         { background: #e0e7ff; color: #3730a3; }
+.badge-publish          { background: #fce7f3; color: #9d174d; }
+.badge-unpublish        { background: #fee2e2; color: #991b1b; }
+.badge-zalo             { background: #cffafe; color: #0e7490; }
+.badge-err-type         { background: #fee2e2; color: #dc2626; }
+.badge-reminder         { background: #fff7ed; color: #9a3412; }
+.badge-review-response  { background: #ecfeff; color: #0e7490; }
+.badge-review-completed { background: #dcfce7; color: #166534; }
+
+/* Detail block & toggle */
+.zalo-detail-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 4px;
+    cursor: pointer;
+    color: #0066a6;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid #d8e7f1;
+    background: #eef5fa;
+    padding: 2px 7px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.zalo-detail-toggle:hover {
+    background: #e0f2fe;
+    color: #00558b;
+}
+
+.zalo-detail-content {
+    display: none;
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: #0f172a;
+    color: #f8fafc;
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    max-height: 180px;
+    overflow-y: auto;
+    word-break: break-all;
+}
+
+/* Empty state */
+.zalo-log-empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: #94a3b8;
+}
+
+.zalo-log-empty .empty-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+/* 6. Pagination */
+.zalo-log-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 12px 14px;
+    background: transparent;
+    border-top: none;
+    margin: 6px 0;
+}
+
+.zalo-log-pagination button {
+    min-width: 82px;
+    padding: 6px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    color: #334155;
+    background: #ffffff;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.zalo-log-pagination button:hover:not(:disabled) {
+    color: #0066a6;
+    border-color: #80b8da;
+    background: #f0f9ff;
+}
+
+.zalo-log-pagination button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.zalo-log-page-info {
+    min-width: 150px;
+    color: #586773;
+    text-align: center;
+    font-size: 13.5px;
+}
+
+@media (max-width: 900px) {
+    .zsw-grid { grid-template-columns: 1fr; }
+    .zsw-ribbon { flex-direction: column; align-items: flex-start; }
+    .zalo-log-toolbar { flex-direction: column; align-items: stretch; }
+    .zalo-search-box { max-width: 100%; }
+}

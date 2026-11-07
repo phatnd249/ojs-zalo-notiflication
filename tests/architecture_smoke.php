@@ -3,6 +3,7 @@
 require_once dirname(__DIR__) . '/services/NotificationRecipientResolver.inc.php';
 require_once dirname(__DIR__) . '/services/ZaloSettingsProvider.inc.php';
 require_once dirname(__DIR__) . '/StageChangeHandler.inc.php';
+require_once dirname(__DIR__) . '/services/review/ReviewReminderService.inc.php';
 require_once dirname(__DIR__) . '/handlers/SubmissionNotificationHandler.inc.php';
 require_once dirname(__DIR__) . '/handlers/ReviewNotificationHandler.inc.php';
 require_once dirname(__DIR__) . '/handlers/PublicationNotificationHandler.inc.php';
@@ -52,13 +53,16 @@ foreach ($handlerMethods as [$class, $method]) {
 }
 
 $dashboardSource = file_get_contents(dirname(__DIR__) . '/ZaloNotificationPlugin.inc.php');
+$templateDefaultsSource = file_get_contents(dirname(__DIR__) . '/services/templates/ZaloTemplateDefaults.inc.php');
 $dashboardTemplate = file_get_contents(dirname(__DIR__) . '/templates/reviewReminderDashboard.tpl');
 $activityLogTemplate = file_get_contents(dirname(__DIR__) . '/templates/activityLog.tpl');
 $reviewHandlerSource = file_get_contents(dirname(__DIR__) . '/handlers/ReviewNotificationHandler.inc.php');
+$reminderServiceSource = file_get_contents(dirname(__DIR__) . '/services/review/ReviewReminderService.inc.php');
 $submissionHandlerSource = file_get_contents(dirname(__DIR__) . '/handlers/SubmissionNotificationHandler.inc.php');
 $overdueTaskSource = file_get_contents(dirname(__DIR__) . '/tasks/ZaloOverdueReviewTask.inc.php');
 $postSaveDispatcherSource = file_get_contents(dirname(__DIR__) . '/services/PostSaveNotificationDispatcher.inc.php');
 $activityLoggerSource = file_get_contents(dirname(__DIR__) . '/ActivityLogger.inc.php');
+$activityStorageSource = file_get_contents(dirname(__DIR__) . '/services/activity/ActivityLogStorage.inc.php');
 $messageHelperSource = file_get_contents(dirname(__DIR__) . '/MessageHelper.inc.php');
 $websiteTabsTemplate = file_get_contents(dirname(__DIR__) . '/templates/websiteSettingsTab.tpl');
 $notificationTemplatesSource = file_get_contents(dirname(__DIR__) . '/templates/notificationTemplatesForm.tpl');
@@ -74,7 +78,7 @@ if (strpos($dashboardSource, "case 'reviewDashboardTab':") === false
 }
 
 if (strpos($activityLoggerSource, "'context_id' => \$contextId") === false
-    || strpos($activityLoggerSource, "LOG_FILENAME_PREFIX . \$contextId . '.log'") === false
+    || strpos($activityStorageSource, "LOG_FILENAME_PREFIX . \$contextId . '.log'") === false
     || strpos($dashboardSource, 'getRecentEntries(PHP_INT_MAX, $filterType, $contextId)') === false
     || strpos($activityLogTemplate, 'id="zaloLogPagination"') === false
     || strpos($activityLogTemplate, 'var logPageSize = 20;') === false
@@ -91,12 +95,12 @@ if (strpos($reviewHandlerSource, 'public static function sendManualReminder') ==
 
 if (strpos($dashboardSource, 'StageChangeHandler::checkOverdueReviewDeadlines($this, $scanContextId)') !== false
     || strpos($dashboardSource, 'public function getMessageTemplatesForContext(int $contextId)') === false
-    || strpos($reviewHandlerSource, 'JOIN submissions s ON s.submission_id = ra.submission_id') === false
-    || strpos($reviewHandlerSource, 'WHERE s.context_id = ?') === false
-    || strpos($reviewHandlerSource, 'deadline_scan_context_{$contextId}.lock') === false
-    || strpos($reviewHandlerSource, 'flock($scanLockHandle, LOCK_EX | LOCK_NB)') === false
-    || strpos($reviewHandlerSource, 'getZaloSettings($contextId)') === false
-    || strpos($reviewHandlerSource, 'getMessageTemplatesForContext($contextId)') === false
+    || strpos($reminderServiceSource, 'JOIN submissions s ON s.submission_id = ra.submission_id') === false
+    || strpos($reminderServiceSource, 'WHERE s.context_id = ?') === false
+    || strpos($reminderServiceSource, 'deadline_scan_context_{$contextId}.lock') === false
+    || strpos($reminderServiceSource, 'flock($scanLockHandle, LOCK_EX | LOCK_NB)') === false
+    || strpos($reminderServiceSource, 'getZaloSettings($contextId)') === false
+    || strpos($reminderServiceSource, 'getMessageTemplatesForContext($contextId)') === false
     || strpos($overdueTaskSource, "getDAO('JournalDAO')->getAll(true)") === false
     || strpos($overdueTaskSource, '$this->plugin->getEnabled($contextId)') === false
     || strpos($overdueTaskSource, 'StageChangeHandler::checkOverdueReviewDeadlines($this->plugin, $contextId)') === false) {
@@ -147,7 +151,7 @@ if (strpos($dashboardSource, 'PostSaveNotificationDispatcher::deferDecision(') =
 }
 
 if (strpos($postSaveDispatcherSource, 'StageChangeHandler::handleAuthorEnteredReview(') === false
-    || strpos($dashboardSource, "'review_started'") === false
+    || strpos($templateDefaultsSource, "'review_started'") === false
     || strpos($reviewHandlerSource, 'AUTHOR_REVIEW_STARTED') !== false
     || strpos(file_get_contents(dirname(__DIR__) . '/handlers/SubmissionNotificationHandler.inc.php'), 'AUTHOR_REVIEW_STARTED') === false
     || strpos(file_get_contents(dirname(__DIR__) . '/templates/notificationTemplatesForm.tpl'), 'data-event="review_started"') === false) {
@@ -162,7 +166,7 @@ $revisionHandler = $revisionHandlerStart !== false && $revisionHandlerEnd !== fa
     : '';
 if (strpos($dashboardSource, "HookRegistry::register('SubmissionFile::add'") === false
     || strpos($dashboardSource, 'onSubmissionFileAddCallback') === false
-    || strpos($dashboardSource, "'author_revision'") === false
+    || strpos($templateDefaultsSource, "'author_revision'") === false
     || strpos($notificationTemplatesSource, 'data-event="author_revision"') === false
     || strpos($revisionHandler, 'SUBMISSION_FILE_REVIEW_REVISION') === false
     || strpos($revisionHandler, 'SUBMISSION_FILE_INTERNAL_REVIEW_REVISION') === false
@@ -176,9 +180,10 @@ if (strpos($dashboardSource, "HookRegistry::register('SubmissionFile::add'") ===
     exit(1);
 }
 
-if (strpos($dashboardSource, "'decision' => \"▣ BÀI BÁO ĐÃ CÓ KẾT QUẢ PHẢN BIỆN\\n\\n› Bài: {title}\\n› Yêu cầu: {decisionDesc}") === false
-    || strpos($dashboardSource, "\$event === 'decision' && strpos(\$template, '{decisionDesc}') === false") === false
-    || strpos($dashboardSource, "\$details[] = '› Yêu cầu: {decisionDesc}'") === false
+if (strpos($templateDefaultsSource, "'decision' => \"▣ BÀI BÁO ĐÃ CÓ KẾT QUẢ PHẢN BIỆN\\n\\n› Bài: {title}\\n› Yêu cầu: {decisionDesc}") === false
+    || strpos($templateDefaultsSource, "\$event === 'decision' && strpos(\$template, '{decisionDesc}') === false") === false
+    || strpos($templateDefaultsSource, "\$details[] = '› Yêu cầu: {decisionDesc}'") === false
+    || strpos($dashboardSource, 'ZaloTemplateDefaults::get()') === false
     || strpos($messageHelperSource, "SUBMISSION_EDITOR_DECISION_PENDING_REVISIONS=> '✍️ Yêu cầu chỉnh sửa'") === false
     || strpos($messageHelperSource, 'Yêu cầu nộp lại để mở vòng phản biện mới') === false) {
     fwrite(STDERR, "Author decision templates must distinguish revisions from resubmission, including upgraded saved templates.\n");

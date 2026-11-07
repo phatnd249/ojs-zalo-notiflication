@@ -6,734 +6,769 @@
  * tối ưu tối đa không gian cho bảng log.
  *}
 
+{literal}
 <style>
-    .zalo-log-container {ldelim}
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        font-size: 13px;
-        line-height: 1.45;
-        color: #1e293b;
-        background: #ffffff;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
-        display: flex;
-        flex-direction: column;
-        height: calc(85vh - 30px);
-        min-height: 600px;
-        max-height: 860px;
-        overflow: hidden;
-    {rdelim}
-
-    /* 1. Header */
-    .zalo-log-header {ldelim}
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 10px 16px;
-        background: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-        flex-shrink: 0;
-        flex-wrap: wrap;
-        gap: 8px;
-    {rdelim}
-
-    .zalo-header-left {ldelim}
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    {rdelim}
-
-    .zalo-header-title {ldelim}
-        margin: 0;
-        font-size: 15px;
-        font-weight: 700;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    {rdelim}
-
-    .zalo-header-retention {ldelim}
-        font-size: 11px;
-        color: #64748b;
-        background: #f1f5f9;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 2px 8px;
-    {rdelim}
-
-    .zalo-header-right {ldelim}
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    {rdelim}
-
-    .zalo-stat-chip {ldelim}
-        font-size: 12px;
-        color: #475569;
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
-        padding: 3px 9px;
-        border-radius: 6px;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-    {rdelim}
-
-    .zalo-stat-chip strong {ldelim}
-        color: #0f172a;
-    {rdelim}
-
-    .zalo-stat-chip.is-queue strong.text-danger {ldelim}
-        color: #dc2626;
-    {rdelim}
-
-    /* 2. KPI Ribbon (Thanh thông số tinh gọn) */
-    .zsw-container {ldelim}
-        background: #ffffff;
-        border-bottom: 1px solid #e2e8f0;
-        flex-shrink: 0;
-    {rdelim}
-
-    .zsw-ribbon {ldelim}
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 7px 16px;
-        background: #f8fafc;
-        flex-wrap: wrap;
-        gap: 8px;
-    {rdelim}
-
-    .zsw-date-group {ldelim}
-        display: flex;
-        align-items: center;
-        gap: 5px;
-    {rdelim}
-
-    .zsw-quick-date {ldelim}
-        font-size: 11px;
-        font-weight: 500;
-        padding: 3px 9px;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        background: #ffffff;
-        color: #334155;
-        cursor: pointer;
-        transition: all 0.15s ease;
-    {rdelim}
-
-    .zsw-quick-date:hover {ldelim}
-        background: #f1f5f9;
-        border-color: #94a3b8;
-    {rdelim}
-
-    .zsw-quick-date.active {ldelim}
-        background: #0284c7;
-        color: #ffffff;
-        border-color: #0284c7;
-    {rdelim}
-
-    .zsw-date-group input[type="date"] {ldelim}
-        font-size: 11px;
-        padding: 2px 7px;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        background: #ffffff;
-        color: #334155;
-        height: 25px;
-    {rdelim}
-
-    .zsw-btn-date-filter {ldelim}
-        font-size: 11px;
-        font-weight: 500;
-        padding: 3px 8px;
-        border: 1px solid #93c5fd;
-        border-radius: 4px;
-        background: #eff6ff;
-        color: #1d4ed8;
-        cursor: pointer;
-    {rdelim}
-
-    .zsw-btn-date-filter:hover {ldelim}
-        background: #dbeafe;
-    {rdelim}
-
-    /* KPI Group */
-    .zsw-kpi-group {ldelim}
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-    {rdelim}
-
-    .zsw-kpi-pill {ldelim}
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 11px;
-        padding: 3px 8px;
-        border-radius: 5px;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-        color: #334155;
-        white-space: nowrap;
-    {rdelim}
-
-    .zsw-kpi-pill strong {ldelim}
-        font-weight: 700;
-        font-size: 12px;
-    {rdelim}
-
-    .zsw-kpi-pill.is-sent {ldelim}
-        border-color: #e2e8f0;
-        background: #f8fafc;
-    {rdelim}
-
-    .zsw-kpi-pill.is-delivered {ldelim}
-        border-color: #bbf7d0;
-        background: #f0fdf4;
-        color: #166534;
-    {rdelim}
-
-    .zsw-kpi-pill.is-failed {ldelim}
-        border-color: #fecaca;
-        background: #fef2f2;
-        color: #991b1b;
-    {rdelim}
-
-    .zsw-kpi-pill.is-failed.has-alert {ldelim}
-        background: #fee2e2;
-        border-color: #f87171;
-        color: #b91c1c;
-        box-shadow: 0 0 0 1px #f87171;
-    {rdelim}
-
-    .zsw-kpi-pill.is-overdue {ldelim}
-        border-color: #fed7aa;
-        background: #fff7ed;
-        color: #9a3412;
-    {rdelim}
-
-    .zsw-kpi-pill.is-overdue.has-alert {ldelim}
-        background: #ffe4e6;
-        border-color: #fb7185;
-        color: #be123c;
-        box-shadow: 0 0 0 1px #fb7185;
-    {rdelim}
-
-    .zsw-kpi-pill.is-duesoon {ldelim}
-        border-color: #fef08a;
-        background: #fefce8;
-        color: #854d0e;
-    {rdelim}
-
-    .zsw-drawer-toggle {ldelim}
-        font-size: 11px;
-        font-weight: 600;
-        padding: 3px 10px;
-        border: 1px solid #cbd5e1;
-        border-radius: 4px;
-        background: #ffffff;
-        color: #0284c7;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        transition: all 0.15s ease;
-    {rdelim}
-
-    .zsw-drawer-toggle:hover {ldelim}
-        background: #f0f9ff;
-        border-color: #7dd3fc;
-    {rdelim}
-
-    /* 3. Collapsible Drawer (Chi tiết thống kê) */
-    .zsw-drawer {ldelim}
-        background: #f1f5f9;
-        border-top: 1px solid #e2e8f0;
-        padding: 10px 16px 14px 16px;
-    {rdelim}
-
-    .zsw-drawer-header {ldelim}
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-    {rdelim}
-
-    .zsw-drawer-title {ldelim}
-        font-weight: 600;
-        font-size: 12px;
-        color: #334155;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    {rdelim}
-
-    .zsw-grid {ldelim}
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-    {rdelim}
-
-    .zsw-card {ldelim}
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 9px 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-    {rdelim}
-
-    .zsw-card-header {ldelim}
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #475569;
-        letter-spacing: 0.03em;
-        margin-bottom: 6px;
-        border-bottom: 1px solid #f1f5f9;
-        padding-bottom: 4px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    {rdelim}
-
-    .zsw-badge-tag {ldelim}
-        font-size: 10px;
-        padding: 1px 6px;
-        border-radius: 4px;
-        background: #f1f5f9;
-        color: #64748b;
-        font-weight: normal;
-        text-transform: none;
-    {rdelim}
-
-    .zsw-stats-list {ldelim}
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-    {rdelim}
-
-    .zsw-stat-row {ldelim}
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 12px;
-        color: #475569;
-    {rdelim}
-
-    .zsw-stat-val {ldelim}
-        font-weight: 700;
-        font-size: 12px;
-        color: #1e293b;
-    {rdelim}
-
-    .zsw-val-delivered {ldelim} color: #16a34a; {rdelim}
-    .zsw-val-failed    {ldelim} color: #dc2626; {rdelim}
-    .zsw-val-retrying  {ldelim} color: #d97706; {rdelim}
-    .zsw-val-overdue   {ldelim} color: #dc2626; font-weight: 700; {rdelim}
-    .zsw-val-duesoon   {ldelim} color: #d97706; {rdelim}
-
-    .zsw-activity-list {ldelim}
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        max-height: 85px;
-        overflow-y: auto;
-    {rdelim}
-
-    .zsw-activity-item {ldelim}
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11px;
-        color: #475569;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    {rdelim}
-
-    .zsw-act-icon {ldelim}
-        font-weight: bold;
-        display: inline-block;
-        width: 14px;
-        text-align: center;
-        flex-shrink: 0;
-    {rdelim}
-
-    .zsw-act-icon.is-success {ldelim} color: #16a34a; {rdelim}
-    .zsw-act-icon.is-danger  {ldelim} color: #dc2626; {rdelim}
-    .zsw-act-icon.is-warning {ldelim} color: #d97706; {rdelim}
-
-    .zsw-act-time {ldelim}
-        color: #94a3b8;
-        font-size: 10px;
-        flex-shrink: 0;
-    {rdelim}
-
-    .zsw-act-label {ldelim}
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    {rdelim}
-
-    .zsw-empty-act {ldelim}
-        color: #94a3b8;
-        font-size: 11px;
-        font-style: italic;
-        padding: 8px 0;
-        text-align: center;
-    {rdelim}
-
-    /* 4. Toolbar */
-    .zalo-log-toolbar {ldelim}
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 16px;
-        background: #ffffff;
-        border-bottom: 1px solid #e2e8f0;
-        flex-shrink: 0;
-        flex-wrap: wrap;
-        gap: 10px;
-    {rdelim}
-
-    .zalo-toolbar-filters {ldelim}
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-        flex: 1;
-    {rdelim}
-
-    .zalo-filter-label {ldelim}
-        font-weight: 600;
-        color: #475569;
-        font-size: 12px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    {rdelim}
-
-    .zalo-select {ldelim}
-        font-size: 12px;
-        padding: 5px 10px;
-        border: 1px solid #cbd5e1;
-        border-radius: 5px;
-        background: #ffffff;
-        color: #1e293b;
-        cursor: pointer;
-        min-width: 150px;
-    {rdelim}
-
-    .zalo-select:focus {ldelim}
-        outline: none;
-        border-color: #0284c7;
-        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
-    {rdelim}
-
-    .zalo-search-box {ldelim}
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        min-width: 240px;
-        flex: 1;
-        max-width: 360px;
-    {rdelim}
-
-    .zalo-search-icon {ldelim}
-        position: absolute;
-        left: 9px;
-        color: #94a3b8;
-        font-size: 12px;
-        pointer-events: none;
-    {rdelim}
-
-    .zalo-search-input {ldelim}
-        width: 100%;
-        font-size: 12px;
-        padding: 5px 26px 5px 28px;
-        border: 1px solid #cbd5e1;
-        border-radius: 5px;
-        background: #ffffff;
-        color: #1e293b;
-        transition: all 0.15s ease;
-    {rdelim}
-
-    .zalo-search-input:focus {ldelim}
-        outline: none;
-        border-color: #0284c7;
-        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
-    {rdelim}
-
-    .zalo-search-clear {ldelim}
-        position: absolute;
-        right: 6px;
-        background: transparent;
-        border: none;
-        color: #94a3b8;
-        font-size: 14px;
-        cursor: pointer;
-        padding: 0 4px;
-        line-height: 1;
-    {rdelim}
-
-    .zalo-search-clear:hover {ldelim}
-        color: #475569;
-    {rdelim}
-
-    .zalo-toolbar-actions {ldelim}
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    {rdelim}
-
-    .zalo-btn {ldelim}
-        font-size: 12px;
-        font-weight: 500;
-        padding: 5px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 5px;
-        background: #ffffff;
-        color: #334155;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        transition: all 0.15s ease;
-    {rdelim}
-
-    .zalo-btn:hover {ldelim}
-        background: #f8fafc;
-        border-color: #94a3b8;
-    {rdelim}
-
-    .zalo-btn-primary {ldelim}
-        background: #0284c7;
-        color: #ffffff;
-        border-color: #0284c7;
-    {rdelim}
-
-    .zalo-btn-primary:hover {ldelim}
-        background: #0369a1;
-        border-color: #0369a1;
-    {rdelim}
-
-    /* 5. Table Wrap & Table */
-    .zalo-log-table-wrap {ldelim}
-        flex: 1;
-        min-height: 380px;
-        overflow-y: auto;
-        overflow-x: auto;
-        background: #ffffff;
-    {rdelim}
-
-    .zalo-log-table {ldelim}
-        width: 100%;
-        border-collapse: collapse;
-        table-layout: auto;
-    {rdelim}
-
-    .zalo-log-table thead th {ldelim}
-        position: sticky;
-        top: 0;
-        z-index: 5;
-        background: #f1f5f9;
-        padding: 9px 12px;
-        text-align: left;
-        font-weight: 600;
-        color: #475569;
-        border-bottom: 2px solid #e2e8f0;
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-        white-space: nowrap;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-    {rdelim}
-
-    .zalo-log-table tbody td {ldelim}
-        padding: 8px 12px;
-        border-bottom: 1px solid #f1f5f9;
-        color: #334155;
-        vertical-align: top;
-        font-size: 12px;
-    {rdelim}
-
-    .zalo-log-table tbody tr {ldelim}
-        transition: background-color 0.1s ease;
-    {rdelim}
-
-    .zalo-log-table tbody tr:hover {ldelim}
-        background: #f8fafc;
-    {rdelim}
-
-    .zalo-log-table .col-time {ldelim}
-        white-space: nowrap;
-        color: #64748b;
-        font-size: 11px;
-    {rdelim}
-
-    .zalo-log-table .col-id {ldelim}
-        text-align: center;
-        font-weight: 600;
-        color: #0369a1;
-    {rdelim}
-
-    .zalo-log-table .col-title {ldelim}
-        color: #0f172a;
-        font-weight: 500;
-        word-break: break-word;
-    {rdelim}
-
-    .zalo-log-table .col-detail {ldelim}
-        font-size: 12px;
-        line-height: 1.4;
-    {rdelim}
-
-    /* Badges */
-    .badge {ldelim}
-        display: inline-block;
-        padding: 2px 7px;
-        border-radius: 4px;
-        font-size: 10.5px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-        white-space: nowrap;
-    {rdelim}
-
-    .badge-info    {ldelim} background: #dbeafe; color: #1d4ed8; {rdelim}
-    .badge-warning {ldelim} background: #fef3c7; color: #b45309; {rdelim}
-    .badge-error   {ldelim} background: #fee2e2; color: #dc2626; {rdelim}
-
-    .badge-submission       {ldelim} background: #d1fae5; color: #065f46; {rdelim}
-    .badge-decision         {ldelim} background: #e0e7ff; color: #3730a3; {rdelim}
-    .badge-publish          {ldelim} background: #fce7f3; color: #9d174d; {rdelim}
-    .badge-unpublish        {ldelim} background: #fee2e2; color: #991b1b; {rdelim}
-    .badge-zalo             {ldelim} background: #cffafe; color: #0e7490; {rdelim}
-    .badge-err-type         {ldelim} background: #fee2e2; color: #dc2626; {rdelim}
-    .badge-reminder         {ldelim} background: #fff7ed; color: #9a3412; {rdelim}
-    .badge-review-response  {ldelim} background: #ecfeff; color: #0e7490; {rdelim}
-    .badge-review-completed {ldelim} background: #dcfce7; color: #166534; {rdelim}
-
-    /* Detail block & toggle */
-    .zalo-detail-toggle {ldelim}
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        margin-top: 3px;
-        cursor: pointer;
-        color: #0284c7;
-        font-size: 11px;
-        font-weight: 500;
-        text-decoration: none;
-        border: 1px solid #e0f2fe;
-        background: #f0f9ff;
-        padding: 1px 6px;
-        border-radius: 4px;
-        transition: all 0.15s ease;
-    {rdelim}
-
-    .zalo-detail-toggle:hover {ldelim}
-        background: #e0f2fe;
-        color: #0369a1;
-    {rdelim}
-
-    .zalo-detail-content {ldelim}
-        display: none;
-        margin-top: 6px;
-        padding: 8px 10px;
-        background: #0f172a;
-        color: #f8fafc;
-        border-radius: 5px;
-        font-size: 11px;
-        font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        max-height: 180px;
-        overflow-y: auto;
-        word-break: break-all;
-    {rdelim}
-
-    /* Empty state */
-    .zalo-log-empty {ldelim}
-        text-align: center;
-        padding: 60px 20px;
-        color: #94a3b8;
-    {rdelim}
-
-    .zalo-log-empty .empty-icon {ldelim}
-        font-size: 40px;
-        margin-bottom: 8px;
-    {rdelim}
-
-    /* 6. Pagination */
-    .zalo-log-pagination {ldelim}
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        padding: 8px 16px;
-        background: #ffffff;
-        border-top: 1px solid #e2e8f0;
-        flex-shrink: 0;
-    {rdelim}
-
-    .zalo-log-pagination button {ldelim}
-        min-width: 82px;
-        padding: 5px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 5px;
-        color: #334155;
-        background: #ffffff;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-    {rdelim}
-
-    .zalo-log-pagination button:hover:not(:disabled) {ldelim}
-        color: #0284c7;
-        border-color: #7dd3fc;
-        background: #f0f9ff;
-    {rdelim}
-
-    .zalo-log-pagination button:disabled {ldelim}
-        opacity: 0.45;
-        cursor: default;
-    {rdelim}
-
-    .zalo-log-page-info {ldelim}
-        min-width: 150px;
-        color: #64748b;
-        text-align: center;
-        font-size: 12px;
-    {rdelim}
-
-    @media (max-width: 900px) {ldelim}
-        .zsw-grid {ldelim} grid-template-columns: 1fr; {rdelim}
-        .zsw-ribbon {ldelim} flex-direction: column; align-items: flex-start; {rdelim}
-        .zalo-log-toolbar {ldelim} flex-direction: column; align-items: stretch; {rdelim}
-        .zalo-search-box {ldelim} max-width: 100%; {rdelim}
-    {rdelim}
+.zalo-log-container {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #25323d;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 4px 2px 14px !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 1. Header */
+.zalo-log-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0 0 16px 0 !important;
+    background: transparent !important;
+    border-bottom: none !important;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 2px;
+}
+
+.zalo-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.zalo-header-title {
+    margin: 0;
+    font-size: 1.35em;
+    font-weight: 700;
+    color: #0066a6;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.25;
+}
+
+.zalo-header-subtitle {
+    margin: 0;
+    color: #65717c;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.zalo-header-retention {
+    font-size: 13.5px;
+    color: #1e293b;
+    background: #eef5fa;
+    border: 1px solid #d8e7f1;
+    border-radius: 18px;
+    padding: 6px 13px;
+    white-space: nowrap;
+}
+
+.zalo-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.zalo-stat-chip {
+    font-size: 13.5px;
+    color: #1e293b;
+    background: #eef5fa;
+    border: 1px solid #d8e7f1;
+    padding: 6px 13px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.zalo-stat-chip strong {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 14px;
+}
+
+.zalo-stat-chip.is-queue.is-overdue,
+.zalo-stat-chip.is-queue.has-error {
+    background: #fff1f0;
+    border-color: #ffc9c5;
+    color: #a42620;
+}
+
+.zalo-stat-chip.is-queue strong.text-danger {
+    color: #a42620;
+}
+
+/* 2. KPI Ribbon (Thanh thông số tinh gọn) */
+.zsw-container {
+    background: transparent !important;
+    border: none !important;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.zsw-ribbon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f6f9fb;
+    border: 1px solid #dce5eb;
+    border-radius: 6px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.zsw-date-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zsw-quick-date {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.zsw-quick-date:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.zsw-quick-date.active {
+    background: #0066a6;
+    color: #ffffff;
+    border-color: #0066a6;
+}
+
+.zsw-date-group input[type="date"] {
+    font-size: 13px;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #334155;
+    height: 34px;
+}
+
+.zsw-btn-date-filter {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border: 1px solid #93c5fd;
+    border-radius: 4px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    height: 34px;
+}
+
+.zsw-btn-date-filter:hover {
+    background: #dbeafe;
+}
+
+/* KPI Group */
+.zsw-kpi-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.zsw-kpi-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 16px;
+    border: 1px solid #d8e7f1;
+    background: #ffffff;
+    color: #334155;
+    white-space: nowrap;
+}
+
+.zsw-kpi-pill strong {
+    font-weight: 700;
+    font-size: 13.5px;
+}
+
+.zsw-kpi-pill.is-sent {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.zsw-kpi-pill.is-delivered {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.zsw-kpi-pill.is-failed {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.zsw-kpi-pill.is-failed.has-alert {
+    background: #fee2e2;
+    border-color: #f87171;
+    color: #b91c1c;
+}
+
+.zsw-kpi-pill.is-overdue {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.zsw-kpi-pill.is-overdue.has-alert {
+    background: #fff1f0;
+    border-color: #fca5a5;
+    color: #b91c1c;
+}
+
+.zsw-kpi-pill.is-duesoon {
+    border-color: #fef08a;
+    background: #fefce8;
+    color: #a16207;
+}
+
+.zsw-drawer-toggle {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #0066a6;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 34px;
+    transition: all 0.15s ease;
+}
+
+.zsw-drawer-toggle:hover {
+    background: #f0f9ff;
+    border-color: #7dd3fc;
+}
+
+/* 3. Collapsible Drawer (Chi tiết thống kê) */
+.zsw-drawer {
+    background: #f8fafc;
+    border: 1px solid #dce5eb;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 14px 16px;
+    margin-top: -12px;
+    margin-bottom: 12px;
+}
+
+.zsw-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.zsw-drawer-title {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.zsw-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.zsw-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.zsw-card-header {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #475569;
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.zsw-badge-tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: none;
+}
+
+.zsw-stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.zsw-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #475569;
+    padding: 2px 0;
+}
+
+.zsw-stat-val {
+    font-weight: 700;
+    font-size: 13.5px;
+    color: #1e293b;
+}
+
+.zsw-val-delivered { color: #16a34a; }
+.zsw-val-failed    { color: #dc2626; }
+.zsw-val-retrying  { color: #d97706; }
+.zsw-val-overdue   { color: #dc2626; font-weight: 700; }
+.zsw-val-duesoon   { color: #d97706; }
+
+.zsw-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.zsw-activity-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: #475569;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.zsw-act-icon {
+    font-weight: bold;
+    display: inline-block;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.zsw-act-icon.is-success { color: #16a34a; }
+.zsw-act-icon.is-danger  { color: #dc2626; }
+.zsw-act-icon.is-warning { color: #d97706; }
+
+.zsw-act-time {
+    color: #94a3b8;
+    font-size: 11.5px;
+    flex-shrink: 0;
+}
+
+.zsw-act-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.zsw-empty-act {
+    color: #94a3b8;
+    font-size: 12.5px;
+    font-style: italic;
+    padding: 8px 0;
+    text-align: center;
+}
+
+/* 4. Toolbar */
+.zalo-log-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: #f6f9fb;
+    border: 1px solid #dce5eb;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.zalo-toolbar-filters {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.zalo-filter-label {
+    font-weight: 600;
+    color: #475569;
+    font-size: 13.5px;
+}
+
+.zalo-select {
+    font-size: 13.5px;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid #b8c5ce;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1e293b;
+    cursor: pointer;
+    min-width: 170px;
+}
+
+.zalo-select:focus {
+    outline: none;
+    border-color: #0066a6;
+    box-shadow: 0 0 0 2px rgba(0, 102, 166, 0.15);
+}
+
+.zalo-search-box {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-width: 260px;
+    flex: 1;
+    max-width: 400px;
+}
+
+.zalo-search-icon {
+    position: absolute;
+    left: 10px;
+    color: #7d8b95;
+    font-size: 13.5px;
+    pointer-events: none;
+}
+
+.zalo-search-input {
+    width: 100%;
+    height: 38px;
+    font-size: 13.5px;
+    padding: 0 28px 0 32px;
+    border: 1px solid #b8c5ce;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1e293b;
+    transition: all 0.15s ease;
+}
+
+.zalo-search-input:focus {
+    outline: none;
+    border-color: #0066a6;
+    box-shadow: 0 0 0 2px rgba(0, 102, 166, 0.15);
+}
+
+.zalo-search-clear {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.zalo-search-clear:hover {
+    color: #475569;
+}
+
+.zalo-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.zalo-btn {
+    height: 38px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #334155;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+}
+
+.zalo-btn:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+}
+
+.zalo-btn-primary {
+    background: #0066a6;
+    color: #ffffff;
+    border-color: #0066a6;
+}
+
+.zalo-btn-primary:hover {
+    background: #005082;
+    border-color: #005082;
+}
+
+/* 5. Table Wrap & Table */
+.zalo-log-table-wrap {
+    background: #ffffff;
+    border: 1px solid #d8e0e6;
+    border-radius: 7px;
+    overflow-x: auto;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.zalo-log-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 850px;
+}
+
+.zalo-log-table thead th {
+    background: #fbfcfd;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 700;
+    color: #52616d;
+    border-bottom: 1px solid #dfe5e9;
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+
+.zalo-log-table tbody td {
+    padding: 13px 14px;
+    border-bottom: 1px solid #edf0f2;
+    color: #25323d;
+    vertical-align: top;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.zalo-log-table tbody tr:hover td {
+    background: #f8fafc;
+}
+
+.zalo-log-table .col-time {
+    white-space: nowrap;
+    color: #475569;
+    font-size: 13px;
+}
+
+.zalo-log-table .col-id {
+    text-align: center;
+    font-weight: 600;
+    color: #0066a6;
+    font-size: 13.5px;
+}
+
+.zalo-log-table .col-title {
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 13.5px;
+    word-break: break-word;
+}
+
+.zalo-log-table .col-detail {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-info    { background: #dbeafe; color: #1d4ed8; }
+.badge-warning { background: #fef3c7; color: #b45309; }
+.badge-error   { background: #fee2e2; color: #dc2626; }
+
+.badge-submission       { background: #d1fae5; color: #065f46; }
+.badge-decision         { background: #e0e7ff; color: #3730a3; }
+.badge-publish          { background: #fce7f3; color: #9d174d; }
+.badge-unpublish        { background: #fee2e2; color: #991b1b; }
+.badge-zalo             { background: #cffafe; color: #0e7490; }
+.badge-err-type         { background: #fee2e2; color: #dc2626; }
+.badge-reminder         { background: #fff7ed; color: #9a3412; }
+.badge-review-response  { background: #ecfeff; color: #0e7490; }
+.badge-review-completed { background: #dcfce7; color: #166534; }
+
+/* Detail block & toggle */
+.zalo-detail-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 4px;
+    cursor: pointer;
+    color: #0066a6;
+    font-size: 12px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid #d8e7f1;
+    background: #eef5fa;
+    padding: 2px 7px;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+
+.zalo-detail-toggle:hover {
+    background: #e0f2fe;
+    color: #005082;
+}
+
+.zalo-detail-content {
+    display: none;
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: #0f172a;
+    color: #f8fafc;
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    max-height: 180px;
+    overflow-y: auto;
+    word-break: break-all;
+}
+
+/* Empty state */
+.zalo-log-empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: #94a3b8;
+}
+
+.zalo-log-empty .empty-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+/* 6. Pagination */
+.zalo-log-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 12px 14px;
+    background: transparent;
+    border-top: none;
+    margin: 6px 0;
+}
+
+.zalo-log-pagination button {
+    min-width: 82px;
+    height: 34px;
+    padding: 0 15px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    color: #334155;
+    background: #ffffff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.zalo-log-pagination button:hover:not(:disabled) {
+    color: #0066a6;
+    border-color: #80b8da;
+    background: #f0f9ff;
+}
+
+.zalo-log-pagination button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.zalo-log-page-info {
+    min-width: 150px;
+    color: #586773;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@media (max-width: 900px) {
+    .zsw-grid { grid-template-columns: 1fr; }
+    .zsw-ribbon { flex-direction: column; align-items: flex-start; }
+    .zalo-log-toolbar { flex-direction: column; align-items: stretch; }
+    .zalo-search-box { max-width: 100%; }
+}
 </style>
-
+{/literal}
 <div class="zalo-log-container">
     {* 1. Header Bar *}
     <div class="zalo-log-header">
         <div class="zalo-header-left">
-            <h3 class="zalo-header-title">
-                <span style="color:#0284c7;">📋</span>
-                <span>Activity Log — Zalo Notification</span>
-            </h3>
-            <span class="zalo-header-retention" title="Nhật ký được bảo vệ và tự động xoay vòng sau {$logRetentionDays|default:90} ngày">
-                🛡️ Lưu {$logRetentionDays|default:90} ngày
-            </span>
+            <div>
+                <h3 class="zalo-header-title">
+                    <i class="fa fa-file-text-o" style="color:#0066a6;"></i> Activity Log — Zalo Notification
+                </h3>
+                <p class="zalo-header-subtitle">Nhật ký hệ thống gửi tin Zalo, theo dõi các sự kiện biên tập và phản biện.</p>
+            </div>
         </div>
         <div class="zalo-header-right">
-            <span class="zalo-stat-chip" title="Tổng số bản ghi trong thời hạn lưu trữ">
-                📊 <strong>{$totalEntries}</strong> bản ghi
+            <span class="zalo-stat-chip zalo-header-retention" title="Nhật ký được bảo vệ và tự động xoay vòng sau {$logRetentionDays|default:90} ngày">
+                Lưu <strong>{$logRetentionDays|default:90}</strong> ngày
             </span>
-            <span class="zalo-stat-chip is-queue" title="Trạng thái hàng đợi tin nhắn hiện tại">
-                ⏳ Hàng đợi: <strong>{$outboxStats.pending}</strong> chờ, 
+            <span class="zalo-stat-chip" title="Tổng số bản ghi trong thời hạn lưu trữ">
+                <strong>{$totalEntries}</strong> bản ghi
+            </span>
+            <span class="zalo-stat-chip is-queue {if $outboxStats.failed > 0}is-overdue{/if}" title="Trạng thái hàng đợi tin nhắn hiện tại">
+                Hàng đợi: <strong>{$outboxStats.pending}</strong> chờ, 
                 <strong>{$outboxStats.processing}</strong> đang gửi
                 {if $outboxStats.failed > 0}
                     , <strong class="text-danger">{$outboxStats.failed} lỗi</strong>
@@ -747,29 +782,27 @@
         {* 2.1 Thanh KPI tinh gọn ngang *}
         <div class="zsw-ribbon">
             <div class="zsw-date-group">
-                <button type="button" class="zsw-quick-date {if $dailyStats.is_today}active{/if}" data-date="today">Hôm nay</button>
-                <button type="button" class="zsw-quick-date" data-date="yesterday">Hôm qua</button>
                 <input type="date" id="zswDatePicker" value="{$selectedStatsDate|escape}" title="Chọn ngày xem thống kê">
                 <button type="button" id="zswBtnFilterByDate" class="zsw-btn-date-filter" title="Lọc bảng log theo ngày này">
-                    🔍 Lọc bảng
+                    Lọc bảng
                 </button>
             </div>
 
             <div class="zsw-kpi-group">
                 <span class="zsw-kpi-pill is-sent" title="Tổng tin Zalo đã gửi trong ngày">
-                    📤 Gửi: <strong id="kpiSent">{$dailyStats.sent}</strong>
+                    Gửi: <strong id="kpiSent">{$dailyStats.sent}</strong>
                 </span>
                 <span class="zsw-kpi-pill is-delivered" title="Gửi thành công">
-                    ✅ Thành công: <strong id="kpiDelivered">{$dailyStats.delivered}</strong>
+                    Thành công: <strong id="kpiDelivered">{$dailyStats.delivered}</strong>
                 </span>
                 <span class="zsw-kpi-pill is-failed {if $dailyStats.failed > 0}has-alert{/if}" title="Gửi lỗi">
-                    ❌ Lỗi: <strong id="kpiFailed">{$dailyStats.failed}</strong>
+                    Lỗi: <strong id="kpiFailed">{$dailyStats.failed}</strong>
                 </span>
                 <span class="zsw-kpi-pill is-overdue {if $dailyStats.reviewer_reminders.overdue > 0}has-alert{/if}" title="Phản biện đang quá hạn">
-                    🚨 PB Quá hạn: <strong id="kpiOverdue">{$dailyStats.reviewer_reminders.overdue}</strong>
+                    PB Quá hạn: <strong id="kpiOverdue">{$dailyStats.reviewer_reminders.overdue}</strong>
                 </span>
                 <span class="zsw-kpi-pill is-duesoon" title="Phản biện đến hạn trong 3 ngày">
-                    ⏰ PB Sắp hạn: <strong id="kpiDueSoon">{$dailyStats.reviewer_reminders.due_in_3_days}</strong>
+                    PB Sắp hạn: <strong id="kpiDueSoon">{$dailyStats.reviewer_reminders.due_in_3_days}</strong>
                 </span>
             </div>
 
@@ -784,7 +817,7 @@
         <div class="zsw-drawer" id="zswDrawer" style="display:none;">
             <div class="zsw-drawer-header">
                 <div class="zsw-drawer-title">
-                    <span>📈 Chi tiết phân tích ngày</span>
+                    <span>Chi tiết phân tích ngày</span>
                     <span id="zswDateLabel" style="font-weight:700;color:#0284c7;">({$dailyStats.date|escape})</span>
                 </div>
                 <small style="color:#64748b;">Số liệu tổng hợp tự động từ nhật ký và hàng đợi tin nhắn</small>
@@ -794,7 +827,7 @@
                 {* Card 1: Gửi tin Zalo *}
                 <div class="zsw-card">
                     <div class="zsw-card-header">
-                        <span>💬 Gửi tin Zalo</span>
+                        <span>Gửi tin Zalo</span>
                         <span id="zswBadgeDate" class="zsw-badge-tag">{$dailyStats.date|escape}</span>
                     </div>
                     <div class="zsw-stats-list">
@@ -820,7 +853,7 @@
                 {* Card 2: Nhắc phản biện *}
                 <div class="zsw-card">
                     <div class="zsw-card-header">
-                        <span>⏰ Nhắc phản biện</span>
+                        <span>Nhắc phản biện</span>
                         <span class="zsw-badge-tag">Tình trạng</span>
                     </div>
                     <div class="zsw-stats-list">
@@ -846,7 +879,7 @@
                 {* Card 3: Hoạt động gần đây *}
                 <div class="zsw-card">
                     <div class="zsw-card-header">
-                        <span>⚡ Hoạt động trong ngày</span>
+                        <span>Hoạt động trong ngày</span>
                         <span id="zswActivityCount" class="zsw-badge-tag">{count($dailyStats.recent_activity)} sự kiện</span>
                     </div>
                     <div class="zsw-activity-list" id="zswActivityList">
@@ -873,28 +906,28 @@
             <label for="zaloFilterSelect" class="zalo-filter-label">Lọc:</label>
             <select id="zaloFilterSelect" class="zalo-select">
                 <option value="">— Tất cả loại log —</option>
-                <option value="SUBMISSION" {if $filterType == 'SUBMISSION'}selected{/if}>📥 Nộp bài</option>
-                <option value="DECISION" {if $filterType == 'DECISION'}selected{/if}>📌 Quyết định</option>
-                <option value="PUBLISH" {if $filterType == 'PUBLISH'}selected{/if}>🎉 Xuất bản</option>
-                <option value="UNPUBLISH" {if $filterType == 'UNPUBLISH'}selected{/if}>⚠️ Hủy xuất bản</option>
-                <option value="ZALO_SEND" {if $filterType == 'ZALO_SEND'}selected{/if}>💬 Gửi Zalo</option>
-                <option value="ERROR" {if $filterType == 'ERROR'}selected{/if}>❌ Lỗi</option>
-                <option value="REVIEW_REQUEST" {if $filterType == 'REVIEW_REQUEST'}selected{/if}>🔔 Mời PB</option>
-                <option value="REVIEW_RESPONSE" {if $filterType == 'REVIEW_RESPONSE'}selected{/if}>↪ PB phản hồi</option>
-                <option value="REVIEW_REMINDER" {if $filterType == 'REVIEW_REMINDER'}selected{/if}>⏰ Nhắc hạn PB</option>
-                <option value="REVIEW_COMPLETED" {if $filterType == 'REVIEW_COMPLETED'}selected{/if}>✅ PB đã nộp</option>
+                <option value="SUBMISSION" {if $filterType == 'SUBMISSION'}selected{/if}>Nộp bài</option>
+                <option value="DECISION" {if $filterType == 'DECISION'}selected{/if}>Quyết định</option>
+                <option value="PUBLISH" {if $filterType == 'PUBLISH'}selected{/if}>Xuất bản</option>
+                <option value="UNPUBLISH" {if $filterType == 'UNPUBLISH'}selected{/if}>Hủy xuất bản</option>
+                <option value="ZALO_SEND" {if $filterType == 'ZALO_SEND'}selected{/if}>Gửi Zalo</option>
+                <option value="ERROR" {if $filterType == 'ERROR'}selected{/if}>Lỗi</option>
+                <option value="REVIEW_REQUEST" {if $filterType == 'REVIEW_REQUEST'}selected{/if}>Mời phản biện</option>
+                <option value="REVIEW_RESPONSE" {if $filterType == 'REVIEW_RESPONSE'}selected{/if}>PB phản hồi</option>
+                <option value="REVIEW_REMINDER" {if $filterType == 'REVIEW_REMINDER'}selected{/if}>Nhắc hạn PB</option>
+                <option value="REVIEW_COMPLETED" {if $filterType == 'REVIEW_COMPLETED'}selected{/if}>PB đã nộp</option>
             </select>
 
             <div class="zalo-search-box">
-                <span class="zalo-search-icon">🔍</span>
+                <span class="zalo-search-icon"><i class="fa fa-search"></i></span>
                 <input type="text" id="zaloSearchInput" class="zalo-search-input" placeholder="Tìm kiếm ID, tiêu đề, tên tác giả/biên tập...">
                 <button type="button" id="zaloSearchClear" class="zalo-search-clear" style="display:none;" title="Xóa tìm kiếm">×</button>
             </div>
         </div>
 
         <div class="zalo-toolbar-actions">
-            <button type="button" id="zaloBtnRefresh" class="zalo-btn" title="Làm mới bảng log">🔄 Làm mới</button>
-            <button type="button" id="zaloBtnExport" class="zalo-btn zalo-btn-primary" title="Tải xuống tệp nhật ký TXT">📥 Xuất file log</button>
+            <button type="button" id="zaloBtnRefresh" class="zalo-btn" title="Làm mới bảng log"><i class="fa fa-refresh"></i> Làm mới</button>
+            <button type="button" id="zaloBtnExport" class="zalo-btn zalo-btn-primary" title="Tải xuống tệp nhật ký TXT"><i class="fa fa-download"></i> Xuất file log</button>
         </div>
     </div>
 
@@ -925,25 +958,25 @@
                             <td class="col-time">{$entry.time|escape}</td>
                             <td>
                                 {if $entry.type == 'SUBMISSION'}
-                                    <span class="badge badge-submission">📥 Nộp bài</span>
+                                    <span class="badge badge-submission">Nộp bài</span>
                                 {elseif $entry.type == 'DECISION'}
-                                    <span class="badge badge-decision">📌 Quyết định</span>
+                                    <span class="badge badge-decision">Quyết định</span>
                                 {elseif $entry.type == 'PUBLISH'}
-                                    <span class="badge badge-publish">🎉 Xuất bản</span>
+                                    <span class="badge badge-publish">Xuất bản</span>
                                 {elseif $entry.type == 'UNPUBLISH'}
-                                    <span class="badge badge-unpublish">⚠️ Hủy XB</span>
+                                    <span class="badge badge-unpublish">Hủy XB</span>
                                 {elseif $entry.type == 'ZALO_SEND'}
-                                    <span class="badge badge-zalo">💬 Zalo</span>
+                                    <span class="badge badge-zalo">Zalo</span>
                                 {elseif $entry.type == 'ERROR'}
-                                    <span class="badge badge-err-type">❌ Lỗi</span>
+                                    <span class="badge badge-err-type">Lỗi</span>
                                 {elseif $entry.type == 'REVIEW_REQUEST'}
-                                    <span class="badge badge-reminder">🔔 Mời PB</span>
+                                    <span class="badge badge-reminder">Mời PB</span>
                                 {elseif $entry.type == 'REVIEW_RESPONSE'}
-                                    <span class="badge badge-review-response">↪ PB phản hồi</span>
+                                    <span class="badge badge-review-response">PB phản hồi</span>
                                 {elseif $entry.type == 'REVIEW_REMINDER'}
-                                    <span class="badge badge-reminder">⏰ Nhắc hạn</span>
+                                    <span class="badge badge-reminder">Nhắc hạn</span>
                                 {elseif $entry.type == 'REVIEW_COMPLETED'}
-                                    <span class="badge badge-review-completed">✓ PB đã nộp</span>
+                                    <span class="badge badge-review-completed">PB đã nộp</span>
                                 {else}
                                     <span class="badge">{$entry.type|escape}</span>
                                 {/if}
@@ -977,7 +1010,7 @@
                             <td class="col-detail">
                                 {if isset($entry.extra)}
                                     {if isset($entry.extra.performed_by)}
-                                        <div>👤 {$entry.extra.performed_by|escape}</div>
+                                        <div>{$entry.extra.performed_by|escape}</div>
                                     {/if}
                                     {if isset($entry.extra.decision)}
                                         <div>{$entry.extra.decision|escape}</div>
@@ -989,21 +1022,21 @@
                                         <div>Status: <strong>{$entry.extra.status|escape}</strong></div>
                                     {/if}
                                     {if isset($entry.extra.message)}
-                                        <div style="color:#dc2626;">⚠️ {$entry.extra.message|escape|truncate:80:"..."}</div>
+                                        <div style="color:#dc2626;">{$entry.extra.message|escape|truncate:80:"..."}</div>
                                     {/if}
                                     {if isset($entry.extra.reviewerName)}
-                                        <div>👤 Reviewer: {$entry.extra.reviewerName|escape}</div>
+                                        <div>Reviewer: {$entry.extra.reviewerName|escape}</div>
                                     {elseif isset($entry.extra.reviewer)}
-                                        <div>👤 Reviewer: {$entry.extra.reviewer|escape}</div>
+                                        <div>Reviewer: {$entry.extra.reviewer|escape}</div>
                                     {/if}
                                     {if isset($entry.extra.deadline)}
-                                        <div>📅 Hạn: {$entry.extra.deadline|escape}
+                                        <div>Hạn: {$entry.extra.deadline|escape}
                                             {if isset($entry.extra.daysLeft)}
                                                 ({if $entry.extra.daysLeft < 0}<span style="color:#dc2626;font-weight:600;">quá hạn</span>{elseif $entry.extra.daysLeft == 0}<span style="color:#d97706;font-weight:600;">HÔM NAY</span>{else}còn {$entry.extra.daysLeft} ngày{/if})
                                             {/if}
                                         </div>
                                     {elseif isset($entry.extra.date_due)}
-                                        <div>📅 Hạn: {$entry.extra.date_due|escape}
+                                        <div>Hạn: {$entry.extra.date_due|escape}
                                             {if isset($entry.extra.days_left)}
                                                 ({if $entry.extra.days_left == 0}<span style="color:#d97706;font-weight:600;">HÔM NAY</span>{else}còn {$entry.extra.days_left} ngày{/if})
                                             {/if}

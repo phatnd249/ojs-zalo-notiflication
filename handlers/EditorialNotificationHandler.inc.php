@@ -20,6 +20,7 @@ class EditorialNotificationHandler extends StageChangeHandler
             }
 
             $submissionId = (int) $submission->getId();
+            $contextId = self::getSubmissionContextId($submission);
             $stageId = $stageId ?: (int) $submission->getStageId();
             $assignmentId = 0;
             $stageAssignmentDao = \DAORegistry::getDAO('StageAssignmentDAO');
@@ -48,7 +49,9 @@ class EditorialNotificationHandler extends StageChangeHandler
             $editorRole = $userGroup->getLocalizedName();
             $phone = ZaloApiClient::normalizePhoneNumber((string) $editor->getPhone());
 
-            $templates = self::$plugin ? self::$plugin->getMessageTemplates() : [];
+            $templates = self::$plugin && method_exists(self::$plugin, 'getMessageTemplatesForContext')
+                ? self::$plugin->getMessageTemplatesForContext($contextId)
+                : (self::$plugin ? self::$plugin->getMessageTemplates() : []);
             $template = $templates['editor']['editor_assignment'] ?? '';
             $status = 'SKIPPED (Chưa có mẫu thông báo)';
 
@@ -66,10 +69,10 @@ class EditorialNotificationHandler extends StageChangeHandler
                         'timestamp' => date('d/m/Y H:i:s'),
                     ]);
                     $message = MessageHelper::buildMessage($template, $data);
-                    $settings = self::getZaloSettings();
+                    $settings = self::getZaloSettings($contextId);
                     $status = ZaloApiClient::sendToPhones(
                         $message, $settings['botId'], $settings['apiKey'], [$phone],
-                        'EDITOR_ASSIGNMENT', self::getSubmissionContextId($submission)
+                        'EDITOR_ASSIGNMENT', $contextId
                     );
                 }
             }
@@ -173,11 +176,14 @@ class EditorialNotificationHandler extends StageChangeHandler
                 return;
             }
 
-            $settings = self::getZaloSettings();
+            $contextId = self::getSubmissionContextId($submission);
+            $settings = self::getZaloSettings($contextId);
             $botId = $settings['botId'];
             $apiKey = $settings['apiKey'];
 
-            $templates = self::$plugin ? self::$plugin->getMessageTemplates() : [];
+            $templates = self::$plugin && method_exists(self::$plugin, 'getMessageTemplatesForContext')
+                ? self::$plugin->getMessageTemplatesForContext($contextId)
+                : (self::$plugin ? self::$plugin->getMessageTemplates() : []);
             $editorTemplate = $templates['editor']['decision'] ?? '';
             $reviewerTemplate = $templates['reviewer']['decision'] ?? '';
 
@@ -209,14 +215,32 @@ class EditorialNotificationHandler extends StageChangeHandler
             // Việc gửi được xử lý trong handleMailEvent() để tôn trọng lựa chọn
             // "Skip Email" và tránh gửi Zalo trùng hai lần.
 
-            // Gửi Phản biện
-            if (self::shouldSendTemplate($reviewerTemplate)) {
+            // Gửi Phản biện (Bảo toàn tính bảo mật học thuật trong Blind Review: không để lộ quyết định nội bộ)
+            $reviewerUniqueKey = "DECISION_REVIEWER_{$submissionId}_{$stageId}_{$decisionType}";
+            if (self::shouldSendTemplate($reviewerTemplate) && !ActivityLogger::isAlreadyLogged($reviewerUniqueKey, 300, $contextId)) {
                 $reviewerPhones = self::getReviewerPhones($submissionId);
                 if (!empty($reviewerPhones)) {
-                    $reviewerMsg = MessageHelper::buildMessage($reviewerTemplate, $data);
-                    ZaloApiClient::sendToPhones(
+                    $reviewerData = $data;
+                    $reviewerData['decisionDesc'] = 'Đã có thông tin cập nhật';
+                    $reviewerMsg = MessageHelper::buildMessage($reviewerTemplate, $reviewerData);
+                    $reviewerStatus = ZaloApiClient::sendToPhones(
                         $reviewerMsg, $botId, $apiKey, $reviewerPhones,
-                        'EDITOR_DECISION_REVIEWER', self::getSubmissionContextId($submission)
+                        'EDITOR_DECISION_REVIEWER', $contextId
+                    );
+                    ActivityLogger::log(
+                        ActivityLogger::TYPE_ZALO_SEND,
+                        strpos($reviewerStatus, 'Thành công') !== false || strpos($reviewerStatus, 'Đã xếp hàng') === 0
+                            ? ActivityLogger::LEVEL_INFO : ActivityLogger::LEVEL_WARNING,
+                        'System',
+                        $submissionId,
+                        $title,
+                        $reviewerUniqueKey,
+                        [
+                            'recipient_count' => count($reviewerPhones),
+                            'zalo_status' => $reviewerStatus,
+                            'privacy' => 'Không gửi nội dung quyết định cho phản biện viên',
+                        ],
+                        $contextId
                     );
                 }
             }
@@ -256,10 +280,13 @@ class EditorialNotificationHandler extends StageChangeHandler
                 self::writeDebug("handleMailEvent: LỖI lấy title/author: " . $e->getMessage());
             }
 
-            $settings = self::getZaloSettings();
+            $contextId = self::getSubmissionContextId($submission);
+            $settings = self::getZaloSettings($contextId);
             $botId = $settings['botId'];
             $apiKey = $settings['apiKey'];
-            $templates = $plugin->getMessageTemplates();
+            $templates = $plugin && method_exists($plugin, 'getMessageTemplatesForContext')
+                ? $plugin->getMessageTemplatesForContext($contextId)
+                : ($plugin ? $plugin->getMessageTemplates() : []);
 
             // EMAIL KẾT QUẢ PHẢN BIỆN GỬI CHO TÁC GIẢ
             // Không sao chép nội dung email/nhận xét phản biện sang Zalo để bảo

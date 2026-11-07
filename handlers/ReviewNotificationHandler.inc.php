@@ -5,17 +5,12 @@ class ReviewNotificationHandler extends StageChangeHandler
 {
     public static function getDailyReminderKey(int $contextId, int $reviewId): string
     {
-        return "REVIEW_REMINDER_DAILY_{$contextId}_{$reviewId}_" . date('Y-m-d');
+        return ReviewReminderService::getDailyReminderKey($contextId, $reviewId);
     }
 
     public static function wasRemindedToday($reviewAssignment): bool
     {
-        if (!$reviewAssignment || !method_exists($reviewAssignment, 'getDateReminded')) {
-            return false;
-        }
-        $dateReminded = $reviewAssignment->getDateReminded();
-        $timestamp = $dateReminded ? strtotime((string) $dateReminded) : false;
-        return $timestamp !== false && date('Y-m-d', $timestamp) === date('Y-m-d');
+        return ReviewReminderService::wasRemindedToday($reviewAssignment);
     }
 
     /** Tìm đúng lượt phản biện từ người nhận của email nhắc tự động OJS. */
@@ -141,185 +136,7 @@ class ReviewNotificationHandler extends StageChangeHandler
 
     public static function checkOverdueReviewDeadlines($plugin = null, int $contextId = 0): void
     {
-        $scanLockHandle = null;
-        try {
-            if ($plugin) {
-                self::setPlugin($plugin);
-            }
-
-            // Không bao giờ quét toàn hệ thống khi không xác định được tạp chí.
-            if ($contextId <= 0) {
-                self::writeDebug('checkOverdueReviewDeadlines: Bỏ qua vì không xác định được context.');
-                return;
-            }
-
-            // Khóa theo context chỉ ngăn hai worker quét đồng thời; lịch chạy do scheduled task quyết định.
-            $scanLock = ZaloNotificationPlugin::getDataDir() . "/deadline_scan_context_{$contextId}.lock";
-            $scanLockHandle = @fopen($scanLock, 'c');
-            if (!$scanLockHandle || !@flock($scanLockHandle, LOCK_EX | LOCK_NB)) {
-                return;
-            }
-
-            $result = \DAORegistry::getDAO('UserDAO')->retrieve(
-                'SELECT ra.review_id, ra.submission_id, ra.reviewer_id, ra.date_due, ra.round
-                   FROM review_assignments ra
-                   JOIN submissions s ON s.submission_id = ra.submission_id
-                  WHERE s.context_id = ?
-                    AND ra.cancelled = 0
-                    AND ra.declined = 0
-                    AND ra.date_completed IS NULL
-                    AND ra.date_due IS NOT NULL
-                    AND ra.date_due < NOW()
-                    AND (ra.date_reminded IS NULL OR DATE(ra.date_reminded) < CURRENT_DATE)
-               ORDER BY ra.date_due ASC
-                  LIMIT 25',
-                [$contextId]
-            );
-
-            if (is_iterable($result)) {
-                foreach ($result as $row) {
-                    $row = is_array($row) ? $row : (array) $row;
-                    self::sendOverdueReviewReminder(
-                        (int) ($row['review_id'] ?? 0),
-                        (int) ($row['submission_id'] ?? 0),
-                        (int) ($row['reviewer_id'] ?? 0),
-                        (string) ($row['date_due'] ?? ''),
-                        (int) ($row['round'] ?? 1),
-                        $contextId
-                    );
-                }
-            } else {
-                while (is_object($result) && property_exists($result, 'EOF') && !$result->EOF) {
-                    self::sendOverdueReviewReminder(
-                        (int) ($result->fields['review_id'] ?? 0),
-                        (int) ($result->fields['submission_id'] ?? 0),
-                        (int) ($result->fields['reviewer_id'] ?? 0),
-                        (string) ($result->fields['date_due'] ?? ''),
-                        (int) ($result->fields['round'] ?? 1),
-                        $contextId
-                    );
-                    $result->MoveNext();
-                }
-            }
-
-            if (is_object($result) && method_exists($result, 'Close')) {
-                $result->Close();
-            }
-        } catch (\Throwable $e) {
-            self::writeDebug("LỖI checkOverdueReviewDeadlines context {$contextId}: " . $e->getMessage() . " [" . $e->getFile() . ":" . $e->getLine() . "]");
-            ActivityLogger::logError('checkOverdueReviewDeadlines', $e->getMessage(), 0, $e, $contextId);
-        } finally {
-            if (is_resource($scanLockHandle)) {
-                @flock($scanLockHandle, LOCK_UN);
-                @fclose($scanLockHandle);
-            }
-        }
-    }
-
-    private static function sendOverdueReviewReminder(
-        int $reviewId,
-        int $submissionId,
-        int $reviewerId,
-        string $dateDue,
-        int $round,
-        int $contextId
-    ): void
-    {
-        $dailyKey = self::getDailyReminderKey($contextId, $reviewId);
-        if (ActivityLogger::isAlreadyLogged($dailyKey, 172800, $contextId)) {
-            return;
-        }
-
-        try {
-            $reviewAssignment = \DAORegistry::getDAO('ReviewAssignmentDAO')->getById($reviewId);
-            if (!$reviewAssignment || self::wasRemindedToday($reviewAssignment)) {
-                return;
-            }
-            $submission = \DAORegistry::getDAO('SubmissionDAO')->getById($submissionId);
-            if (!$submission) {
-                return;
-            }
-            if ((int) $submission->getContextId() !== $contextId) {
-                self::writeDebug("sendOverdueReviewReminder: Bỏ qua submission #{$submissionId} không thuộc context {$contextId}.");
-                return;
-            }
-
-            $publication = $submission->getCurrentPublication();
-            $title = $publication ? strip_tags($publication->getLocalizedTitle() ?? "ID #{$submissionId}") : "ID #{$submissionId}";
-            $author = MessageHelper::getAuthorsString($publication ?: $submission);
-
-            $reviewerName = "Reviewer #{$reviewerId}";
-            $reviewerPhone = '';
-            $reviewer = \DAORegistry::getDAO('UserDAO')->getById($reviewerId);
-            if ($reviewer) {
-                $reviewerName = $reviewer->getFullName();
-                $reviewerPhone = preg_replace('/[^0-9]/', '', trim($reviewer->getPhone() ?? ''));
-            }
-
-            $dueTime = strtotime($dateDue);
-            $daysOverdue = $dueTime ? max(0, (int) floor((time() - $dueTime) / 86400)) : 0;
-            $daysText = $daysOverdue > 0 ? "Quá hạn {$daysOverdue} ngày" : 'Đến hạn hôm nay';
-            $deadline = $dueTime ? date('d/m/Y', $dueTime) : $dateDue;
-
-            $settings = self::getZaloSettings($contextId);
-            $templates = self::$plugin ? self::$plugin->getMessageTemplatesForContext($contextId) : [];
-            $editorTemplate = $templates['editor']['reminder'] ?? '';
-            $reviewerTemplate = $templates['reviewer']['reminder'] ?? '';
-            $data = array_merge(MessageHelper::getNavigationData($submission, $reviewId), [
-                'title' => $title,
-                'author' => $author,
-                'reviewerName' => $reviewerName,
-                'deadline' => $deadline,
-                'daysLeft' => $daysText,
-                'round' => $round ?: 1,
-                'timestamp' => date('d/m/Y H:i:s')
-                ]);
-
-            $statuses = [];
-            if (self::shouldSendTemplate($editorTemplate)) {
-                $editorMessage = MessageHelper::buildMessage($editorTemplate, $data);
-                $statuses[] = 'Editor: ' . self::sendToEditorAudience(
-                    $submission, 'REVIEW_REMINDER', $editorMessage, $settings,
-                    'REVIEW_REMINDER_ASSIGNED_EDITOR'
-                );
-            }
-
-            if (self::shouldSendTemplate($reviewerTemplate)) {
-                if ($reviewerPhone !== '') {
-                    $reviewerMessage = MessageHelper::buildMessage($reviewerTemplate, $data);
-                    $statuses[] = 'Reviewer: ' . ZaloApiClient::sendToPhones(
-                        $reviewerMessage, $settings['botId'], $settings['apiKey'], [$reviewerPhone],
-                        'REVIEW_REMINDER', self::getSubmissionContextId($submission)
-                    );
-                } else {
-                    $statuses[] = 'Reviewer: SKIPPED (Chưa có SĐT)';
-                }
-            }
-
-            $zaloStatus = $statuses ? implode(' | ', $statuses) : 'SKIPPED';
-            $isSent = false;
-            foreach ($statuses as $st) {
-                if (strpos($st, 'Thành công') !== false || strpos($st, 'Đã xếp hàng') !== false) {
-                    $isSent = true;
-                    break;
-                }
-            }
-            if ($isSent && $reviewAssignment) {
-                try {
-                    $reviewAssignment->setDateReminded(date('Y-m-d H:i:s'));
-                    $reviewAssignment->setReminderWasAutomatic(1);
-                    \DAORegistry::getDAO('ReviewAssignmentDAO')->updateObject($reviewAssignment);
-                } catch (\Throwable $updateError) {
-                    self::writeDebug('sendOverdueReviewReminder: Không cập nhật được date_reminded: ' . $updateError->getMessage());
-                }
-            }
-
-            ActivityLogger::logReviewReminder($submissionId, $title, $reviewerName, $deadline, -$daysOverdue, $zaloStatus, 'Quá hạn phản biện', $dailyKey, $contextId);
-            self::writeDebug("checkOverdueReviewDeadlines context {$contextId} #{$submissionId}/review {$reviewId}: {$zaloStatus}");
-        } catch (\Throwable $e) {
-            self::writeDebug("LỖI sendOverdueReviewReminder review {$reviewId}: " . $e->getMessage());
-            ActivityLogger::logError('sendOverdueReviewReminder', $e->getMessage(), $submissionId, $e, $contextId);
-        }
+        ReviewReminderService::checkOverdueReviewDeadlines($plugin, $contextId);
     }
 
     // =========================================================================

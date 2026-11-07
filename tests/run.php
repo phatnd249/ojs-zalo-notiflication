@@ -15,6 +15,11 @@ $tests = [
     'outbox_dashboard_test.php',
     'outbox_integration.php',
     'activity_log_ui_test.php',
+    'queue_first_dispatch_test.php',
+    'remediation_fixes_test.php',
+    'review_reminder_schedule_test.php',
+    'submissions_dashboard_tab_test.php',
+    'security_authorization_rate_limit_test.php',
 ];
 
 foreach ($tests as $test) {

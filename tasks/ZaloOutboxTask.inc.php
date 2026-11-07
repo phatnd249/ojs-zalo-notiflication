@@ -27,11 +27,21 @@ class ZaloOutboxTask extends ScheduledTask
             return false;
         }
 
-        $rows = ZaloOutboxRepository::claimBatch(20);
+        $rows = ZaloOutboxRepository::claimBatch(10);
         $sent = 0;
         $failed = 0;
+        $released = 0;
+        $deadline = microtime(true) + 20;
 
-        foreach ($rows as $row) {
+        foreach ($rows as $index => $row) {
+            if (microtime(true) >= $deadline) {
+                foreach (array_slice($rows, $index) as $pendingRow) {
+                    ZaloOutboxRepository::releaseClaim((int) $pendingRow->outbox_id);
+                    $released++;
+                }
+                break;
+            }
+
             $outboxId = (int) $row->outbox_id;
             $contextId = (int) $row->context_id;
             $attempts = (int) $row->attempts;
@@ -75,6 +85,24 @@ class ZaloOutboxTask extends ScheduledTask
                     'Outbox #' . $outboxId . ', lần thử ' . $attempts,
                     $contextId
                 );
+
+                // Khi gặp HTTP 429 hoặc lỗi rate limit từ gateway/Zalo -> Tạm dừng đợt gửi hiện tại ngay lập tức
+                if (preg_match('/Mã lỗi HTTP:\s*429/', $status) || stripos($status, 'rate limit') !== false || stripos($status, 'too many requests') !== false) {
+                    ZaloNotificationPlugin::writeSecureDebug(
+                        "ZaloOutboxTask: Phát hiện Rate Limit từ Zalo/Gateway ({$status}). Tạm dừng đợt gửi worker outbox.",
+                        'ZaloOutboxTask'
+                    );
+                    foreach (array_slice($rows, $index + 1) as $pendingRow) {
+                        ZaloOutboxRepository::releaseClaim((int) $pendingRow->outbox_id);
+                        $released++;
+                    }
+                    break;
+                }
+
+                // Giãn cách an toàn (pacing) giữa các tin gửi liên tiếp: 1.0s - 1.5s
+                if ($index < count($rows) - 1) {
+                    usleep(mt_rand(1000000, 1500000));
+                }
             } catch (\Throwable $e) {
                 ZaloOutboxRepository::markFailed($outboxId, $attempts, 'Lỗi worker: ' . $e->getMessage());
                 ZaloNotificationPlugin::writeSecureDebug(
@@ -86,9 +114,10 @@ class ZaloOutboxTask extends ScheduledTask
         }
 
         $deleted = ZaloOutboxRepository::cleanup();
+        ActivityLogger::runMaintenance();
         $this->addExecutionLogEntry(
             'Đã nhận ' . count($rows) . ' bản ghi; gửi thành công ' . $sent
-                . '; chưa gửi ' . $failed . '; dọn ' . $deleted . ' bản ghi cũ.'
+                . '; chưa gửi ' . $failed . '; trả lại ' . $released . '; dọn ' . $deleted . ' bản ghi cũ.'
         );
         return true;
     }

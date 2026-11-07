@@ -96,7 +96,49 @@ if (!ActivityLogger::isAlreadyLogged($action, 300, $contextA)
 }
 
 $directory = dirname($pathA);
-foreach ([$pathA, $pathB] as $file) {
+$contextC = 91003;
+$contextD = 91004;
+$pathC = ActivityLogger::getLogFileLocation($contextC);
+$pathD = ActivityLogger::getLogFileLocation($contextD);
+
+$staleLine = json_encode([
+    'time' => date('Y-m-d H:i:s', time() - 200 * 86400),
+    'context_id' => $contextC,
+    'type' => ActivityLogger::TYPE_ZALO_SEND,
+    'level' => ActivityLogger::LEVEL_INFO,
+    'actor' => 'System',
+    'action' => 'STALE_READ_RETENTION_MARKER',
+]) . "\n";
+file_put_contents($pathC, $staleLine, FILE_APPEND);
+ActivityLogger::getRecentEntries(20, null, $contextC);
+if (strpos((string) file_get_contents($pathC), 'STALE_READ_RETENTION_MARKER') !== false) {
+    failActivityContextTest('Đọc log phải dọn các bản ghi quá thời hạn lưu.');
+}
+
+$staleWriteLine = json_encode([
+    'time' => date('Y-m-d H:i:s', time() - 200 * 86400),
+    'context_id' => $contextD,
+    'type' => ActivityLogger::TYPE_ZALO_SEND,
+    'level' => ActivityLogger::LEVEL_INFO,
+    'actor' => 'System',
+    'action' => 'STALE_WRITE_RETENTION_MARKER',
+]) . "\n";
+file_put_contents($pathD, $staleWriteLine, FILE_APPEND);
+ActivityLogger::log(
+    ActivityLogger::TYPE_ZALO_SEND,
+    ActivityLogger::LEVEL_INFO,
+    'Test D',
+    0,
+    'Ghi log sau khi dọn retention',
+    'RETENTION_WRITE_PROBE',
+    [],
+    $contextD
+);
+if (strpos((string) file_get_contents($pathD), 'STALE_WRITE_RETENTION_MARKER') !== false) {
+    failActivityContextTest('Ghi log phải dọn các bản ghi quá thời hạn lưu.');
+}
+
+foreach ([$pathA, $pathB, $pathC, $pathD] as $file) {
     if (file_exists($file)) {
         unlink($file);
     }

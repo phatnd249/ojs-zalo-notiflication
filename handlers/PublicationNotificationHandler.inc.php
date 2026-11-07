@@ -50,11 +50,14 @@ class PublicationNotificationHandler extends StageChangeHandler
 
             $datePublished = $publication->getData('datePublished') ?? date('Y-m-d');
 
-            $settings = self::getZaloSettings();
+            $contextId = self::getSubmissionContextId($submission);
+            $settings = self::getZaloSettings($contextId);
             $botId = $settings['botId'];
             $apiKey = $settings['apiKey'];
 
-            $templates = self::$plugin ? self::$plugin->getMessageTemplates() : [];
+            $templates = self::$plugin && method_exists(self::$plugin, 'getMessageTemplatesForContext')
+                ? self::$plugin->getMessageTemplatesForContext($contextId)
+                : (self::$plugin ? self::$plugin->getMessageTemplates() : []);
             $editorTemplate = $templates['editor']['publish'] ?? '';
             $authorTemplate = $templates['author']['publish'] ?? '';
 
@@ -117,16 +120,23 @@ class PublicationNotificationHandler extends StageChangeHandler
 
             self::writeDebug("handleUnpublish START — submissionId:{$submissionId}");
 
-            $uniqueKey = "UNPUBLISHED_{$submissionId}_" . $publication->getId() . "_" . time();
+            $contextId = self::getSubmissionContextId($submission);
+            $uniqueKey = "UNPUBLISHED_{$submissionId}_" . $publication->getId();
+            if (ActivityLogger::isAlreadyLogged($uniqueKey, 300, $contextId)) {
+                self::writeDebug("handleUnpublish: {$uniqueKey} đã log, bỏ qua.");
+                return;
+            }
 
             $title = strip_tags($publication->getLocalizedTitle() ?? "ID #{$submissionId}");
             $author = MessageHelper::getAuthorsString($publication);
 
-            $settings = self::getZaloSettings();
+            $settings = self::getZaloSettings($contextId);
             $botId = $settings['botId'];
             $apiKey = $settings['apiKey'];
 
-            $templates = self::$plugin ? self::$plugin->getMessageTemplates() : [];
+            $templates = self::$plugin && method_exists(self::$plugin, 'getMessageTemplatesForContext')
+                ? self::$plugin->getMessageTemplatesForContext($contextId)
+                : (self::$plugin ? self::$plugin->getMessageTemplates() : []);
             $editorTemplate = $templates['editor']['unpublish'] ?? '';
             $authorTemplate = $templates['author']['unpublish'] ?? '';
 

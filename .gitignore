@@ -18,3 +18,4 @@ parse_diff.php
 .env
 docs
 _doc_work
+templates/dashboard_preview.html

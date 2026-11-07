@@ -8,6 +8,8 @@ import('lib.pkp.classes.linkAction.request.AjaxModal');
 import('lib.pkp.classes.core.JSONMessage');
 
 require_once(__DIR__ . '/ActivityLogger.inc.php');
+require_once(__DIR__ . '/services/debug/ZaloDebugLogger.inc.php');
+require_once(__DIR__ . '/services/templates/ZaloTemplateDefaults.inc.php');
 require_once(__DIR__ . '/MessageHelper.inc.php');
 require_once(__DIR__ . '/migrations/ZaloNotificationMigration.inc.php');
 require_once(__DIR__ . '/services/ZaloSettingsProvider.inc.php');
@@ -17,16 +19,20 @@ require_once(__DIR__ . '/services/ReviewReminderDashboardService.inc.php');
 require_once(__DIR__ . '/services/PostSaveNotificationDispatcher.inc.php');
 require_once(__DIR__ . '/ZaloApiClient.inc.php');
 require_once(__DIR__ . '/StageChangeHandler.inc.php');
+require_once(__DIR__ . '/services/review/ReviewReminderService.inc.php');
 require_once(__DIR__ . '/handlers/SubmissionNotificationHandler.inc.php');
 require_once(__DIR__ . '/handlers/ReviewNotificationHandler.inc.php');
 require_once(__DIR__ . '/handlers/PublicationNotificationHandler.inc.php');
 require_once(__DIR__ . '/handlers/EditorialNotificationHandler.inc.php');
+require_once(__DIR__ . '/services/security/RateLimiter.inc.php');
+require_once(__DIR__ . '/controllers/ZaloReviewReminderController.inc.php');
+require_once(__DIR__ . '/controllers/ZaloOutboxController.inc.php');
+require_once(__DIR__ . '/controllers/ZaloActivityLogController.inc.php');
+require_once(__DIR__ . '/controllers/ZaloSettingsController.inc.php');
+
 
 class ZaloNotificationPlugin extends GenericPlugin
 {
-    private const DEBUG_LOG_MAX_SIZE = 1048576; // 1 MB
-    private const DEBUG_LOG_ROTATED_FILES = 2;
-
     /**
      * Trả về thư mục ghi file an toàn cho plugin (log, debug, lock...).
      * Ưu tiên: files_dir/zalo_notification > sys_get_temp_dir > __DIR__.
@@ -110,48 +116,7 @@ class ZaloNotificationPlugin extends GenericPlugin
      */
     public static function writeSecureDebug(string $message, string $component = 'Plugin'): void
     {
-        $debugFile = self::getDataDir() . '/debug.txt';
-        self::rotateDebugLogIfNeeded($debugFile);
-
-        $message = preg_replace('/[\r\n]+/', ' ', $message);
-        $message = preg_replace('/\bzlite_[A-Za-z0-9_-]+\b/i', '[API_KEY_REDACTED]', $message);
-        $message = preg_replace('/((?:api[ _-]?key|x-api-key)\s*[:=]\s*)[^\s|,;]+/i', '$1[REDACTED]', $message);
-        $message = preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[EMAIL_REDACTED]', $message);
-        $message = preg_replace_callback(
-            '/(?<!\d)(?:\+?84|0084|0)\d{9}(?!\d)/',
-            function (array $matches): string {
-                $phone = preg_replace('/\D/', '', $matches[0]);
-                return substr($phone, 0, 2) . '******' . substr($phone, -3);
-            },
-            $message
-        );
-
-        $component = preg_replace('/[^A-Za-z0-9_-]/', '', $component) ?: 'Plugin';
-        @file_put_contents(
-            $debugFile,
-            '[' . date('Y-m-d H:i:s') . '] [' . $component . '] ' . $message . "\n",
-            FILE_APPEND | LOCK_EX
-        );
-        @chmod($debugFile, 0600);
-    }
-
-    private static function rotateDebugLogIfNeeded(string $debugFile): void
-    {
-        if (!file_exists($debugFile) || filesize($debugFile) < self::DEBUG_LOG_MAX_SIZE) {
-            return;
-        }
-
-        $oldest = $debugFile . '.' . self::DEBUG_LOG_ROTATED_FILES;
-        if (file_exists($oldest)) {
-            @unlink($oldest);
-        }
-        for ($i = self::DEBUG_LOG_ROTATED_FILES - 1; $i >= 1; $i--) {
-            $source = $debugFile . '.' . $i;
-            if (file_exists($source)) {
-                @rename($source, $debugFile . '.' . ($i + 1));
-            }
-        }
-        @rename($debugFile, $debugFile . '.1');
+        ZaloDebugLogger::write($message, $component);
     }
 
 
@@ -195,11 +160,16 @@ class ZaloNotificationPlugin extends GenericPlugin
                 HookRegistry::register('EditorAction::reinstateReview', [$this, 'onReinstateReviewCallback']);
                 HookRegistry::register('reviewerreviewstep3form::execute', [$this, 'onReviewerReviewCompletedCallback']);
                 HookRegistry::register('pkpreviewerreviewstep3form::execute', [$this, 'onReviewerReviewCompletedCallback']);
+                HookRegistry::register('addparticipantform::execute', [$this, 'onAddEditorParticipantCallback']);
+
                 // Prototype phiếu đánh giá phản biện đang thử nghiệm, tạm tắt ở bản phát hành
                 // HookRegistry::register('TemplateManager::display', [$this, 'registerReviewerAssessmentPrototype']);
 
                 // 6. Thêm Tab Activity Log vào trang Settings > Website để dễ truy cập
                 HookRegistry::register('Template::Settings::website', [$this, 'callbackShowWebsiteSettingsTabs']);
+
+                // 6b. Thêm Tab Điều hành & Nhắc Zalo kế bên tab Lưu trữ trên trang Các bài gửi (dashboard/index.tpl)
+                HookRegistry::register('TemplateManager::display', [$this, 'callbackExtendSubmissionsDashboard']);
 
                 // 7. Truyền plugin instance vào StageChangeHandler để handler đọc được settings
                 StageChangeHandler::setPlugin($this);
@@ -556,6 +526,83 @@ class ZaloNotificationPlugin extends GenericPlugin
         return false;
     }
 
+    /**
+     * Bắt sự kiện hiển thị trang dashboard/index.tpl để gắn thêm tab Điều hành & Nhắc Zalo
+     * ngay kế bên tab Lưu trữ trên trang Các bài gửi.
+     */
+    public function callbackExtendSubmissionsDashboard($hookName, $args)
+    {
+        $templateMgr = $args[0];
+        $template = $args[1];
+
+        if ($template === 'dashboard/index.tpl') {
+            $templateMgr->registerFilter('output', [$this, 'filterDashboardSubmissionsTab']);
+        }
+
+        return false;
+    }
+
+    /**
+     * Chèn thẻ <tab id="zaloDashboard" ...> ngay sau thẻ <tab id="archive" ...></tab>.
+     */
+    public function filterDashboardSubmissionsTab($output, $smarty)
+    {
+        if (strpos($output, 'id="zaloDashboard"') !== false) {
+            return $output;
+        }
+
+        $archivePos = strpos($output, 'id="archive"');
+        if ($archivePos === false) {
+            return $output;
+        }
+
+        $closeTabPos = strpos($output, '</tab>', $archivePos);
+        if ($closeTabPos === false) {
+            return $output;
+        }
+
+        $insertPos = $closeTabPos + strlen('</tab>');
+
+        $request = \Application::get()->getRequest();
+        $reviewDashboardUrl = $this->getManageUrl($request, 'reviewDashboardTab') . '&isEmbedded=1';
+        $reviewDashboardUrlJson = json_encode($reviewDashboardUrl);
+
+        $tabHtml = '
+		<tab id="zaloDashboard" label="Điều hành Zalo" :badge="34">
+			<div v-pre id="zaloDashboardSubmissionsContainer" class="zrd-submissions-tab-container">
+				<style>
+					.pkpTabs__buttons { padding-right: 125px !important; }
+				</style>
+				<script type="text/javascript">
+					$(function() {
+						if (typeof $.pkp !== "undefined" && typeof $.pkp.controllers !== "undefined" && typeof $.pkp.controllers.UrlInDivHandler !== "undefined") {
+							$("#zaloDashboardSubmissionsWrapper").pkpHandler(
+								"$.pkp.controllers.UrlInDivHandler",
+								{
+									sourceUrl: ' . $reviewDashboardUrlJson . ',
+									refreshOn: null
+								}
+							);
+						} else {
+							$.get(' . $reviewDashboardUrlJson . ', function(res) {
+								var html = (res && res.content) ? res.content : res;
+								$("#zaloDashboardSubmissionsWrapper").html(html);
+							});
+						}
+					});
+				</script>
+				<div id="zaloDashboardSubmissionsWrapper">
+					<div style="padding: 40px; text-align: center; color: #64748b; font-size: 14px;">
+						<span class="pkp_spinner" style="display:inline-block; margin-right:8px;"></span>
+						Đang tải dữ liệu Trung tâm Điều hành Phản biện &amp; Zalo Notification...
+					</div>
+				</div>
+			</div>
+		</tab>';
+
+        return substr_replace($output, $tabHtml, $insertPos, 0);
+    }
+
     private function getPluginManageUrl($request, string $verb): string
     {
         $dispatcher = $request->getDispatcher();
@@ -573,6 +620,22 @@ class ZaloNotificationPlugin extends GenericPlugin
             ]
         );
     }
+
+    public function getManageUrl($request, string $verb): string
+    {
+        return $this->getPluginManageUrl($request, $verb);
+    }
+
+    public function getActivityLogEntries(?string $filterType, int $contextId): array
+    {
+        return ActivityLogger::getRecentEntries(PHP_INT_MAX, $filterType, $contextId);
+    }
+
+    public function getActivityLogFileLocation(int $contextId): string
+    {
+        return ActivityLogger::getLogFileLocation($contextId);
+    }
+
 
     /** Chỉ cho phép các thao tác thay đổi dữ liệu qua POST có CSRF hợp lệ. */
     private function isValidWriteRequest($request): bool
@@ -608,472 +671,213 @@ class ZaloNotificationPlugin extends GenericPlugin
     }
 
     /**
+     * Kiểm tra phân quyền người dùng đối với các verb quản lý của plugin (RBAC).
+     * @param PKPRequest $request
+     * @param array $allowedRoles Danh sách Role ID được phép (ROLE_ID_SITE_ADMIN, ROLE_ID_MANAGER, ROLE_ID_SUB_EDITOR,...)
+     * @return bool
+     */
+    public static function isUserAuthorized($request, array $allowedRoles): bool
+    {
+        if (!$request) {
+            return false;
+        }
+
+        $user = method_exists($request, 'getUser') ? $request->getUser() : null;
+        if (!$user) {
+            return false;
+        }
+
+        // Quản trị viên hệ thống (Site Admin) luôn có toàn quyền
+        if (class_exists('Validation', false) && method_exists('Validation', 'isSiteAdmin') && \Validation::isSiteAdmin()) {
+            return true;
+        }
+
+        $userId = (int) $user->getId();
+        $context = method_exists($request, 'getContext') ? $request->getContext() : null;
+        $contextId = $context && method_exists($context, 'getId') ? (int) $context->getId() : CONTEXT_ID_NONE;
+
+        if (class_exists('DAORegistry', false)) {
+            $roleDao = \DAORegistry::getDAO('RoleDAO');
+            if ($roleDao && method_exists($roleDao, 'userHasRole')) {
+                $siteAdminRole = defined('ROLE_ID_SITE_ADMIN') ? ROLE_ID_SITE_ADMIN : 1;
+                if ($roleDao->userHasRole(CONTEXT_ID_NONE, $userId, $siteAdminRole)) {
+                    return true;
+                }
+                if ($contextId && $roleDao->userHasRole($contextId, $userId, $allowedRoles)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Xử lý các verb quản lý plugin.
      * @copydoc Plugin::manage()
      */
     public function manage($args, $request)
     {
-        switch ($request->getUserVar('verb')) {
+        $verb = (string) $request->getUserVar('verb');
+
+        $adminRoles = [
+            defined('ROLE_ID_SITE_ADMIN') ? ROLE_ID_SITE_ADMIN : 1,
+            defined('ROLE_ID_MANAGER') ? ROLE_ID_MANAGER : 16,
+        ];
+        $editorialRoles = [
+            defined('ROLE_ID_SITE_ADMIN') ? ROLE_ID_SITE_ADMIN : 1,
+            defined('ROLE_ID_MANAGER') ? ROLE_ID_MANAGER : 16,
+            defined('ROLE_ID_SUB_EDITOR') ? ROLE_ID_SUB_EDITOR : 17,
+        ];
+
+        $adminVerbs = [
+            'settings',
+            'apiTab',
+            'saveApiSettings',
+            'settingsTab',
+            'saveSettings',
+            'templatesTab',
+            'saveTemplates',
+            'activityLog',
+            'dailySummaryStats',
+            'exportLog',
+            'outboxDashboardTab',
+            'retryOutboxItem',
+            'retryAllOutbox',
+            'deleteOutboxItem',
+            'clearSentOutbox',
+        ];
+
+        $editorialVerbs = [
+            'reviewDashboardTab',
+            'submissionsDashboardTab',
+            'sendReviewReminder',
+            'downloadReport',
+        ];
+
+        if (in_array($verb, $adminVerbs, true)) {
+            if (!self::isUserAuthorized($request, $adminRoles)) {
+                return new JSONMessage(false, __('common.permissionDenied'));
+            }
+        } elseif (in_array($verb, $editorialVerbs, true)) {
+            if (!self::isUserAuthorized($request, $editorialRoles)) {
+                return new JSONMessage(false, __('common.permissionDenied'));
+            }
+        }
+
+        switch ($verb) {
 
             // =================================================================
             // SETTINGS TABS
             // =================================================================
             case 'settings':
-                $templateMgr = TemplateManager::getManager($request);
-                $templateMgr->assign([
-                    'apiTabUrl' => $this->getPluginManageUrl($request, 'apiTab'),
-                    'settingsTabUrl' => $this->getPluginManageUrl($request, 'settingsTab'),
-                    'templatesTabUrl' => $this->getPluginManageUrl($request, 'templatesTab'),
-                ]);
-
-                return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('settingsTabs.tpl')));
+                return ZaloSettingsController::handleSettingsModal($this, $request);
 
             // =================================================================
             // API SETTINGS TAB — Cấu hình API Zalo
             // =================================================================
             case 'apiTab':
-                $contextId = 0;
-                $context = $request->getContext();
-                if ($context)
-                    $contextId = $context->getId();
-
-                $saveUrl = $this->getPluginManageUrl($request, 'saveApiSettings');
-
-                $botId = $this->getSetting($contextId, 'botId');
-                $savedApiKey = trim((string) ($this->getSetting($contextId, 'apiKey') ?? ''));
-                $logRetentionDays = (int) ($this->getSetting($contextId, 'logRetentionDays') ?: 90);
-                if ($logRetentionDays <= 0) $logRetentionDays = 90;
-                $outboxRetentionDays = (int) ($this->getSetting($contextId, 'outboxRetentionDays') ?: 30);
-                if ($outboxRetentionDays <= 0) $outboxRetentionDays = 30;
-
-                $templateMgr = TemplateManager::getManager($request);
-                $templateMgr->assign([
-                    'botId' => $botId,
-                    'apiKeyConfigured' => $savedApiKey !== '',
-                    'logRetentionDays' => $logRetentionDays,
-                    'outboxRetentionDays' => $outboxRetentionDays,
-                    'saveUrl' => $saveUrl,
-                ]);
-
-                return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('apiSettingsForm.tpl')));
+                return ZaloSettingsController::handleApiTab($this, $request);
 
             case 'saveApiSettings':
                 if (!$this->isValidWriteRequest($request)) {
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
-                $contextId = 0;
-                $context = $request->getContext();
-                if ($context)
-                    $contextId = $context->getId();
-
-                $botId = trim($request->getUserVar('botId') ?? '');
-                $apiKey = trim($request->getUserVar('apiKey') ?? '');
-                $logRetentionDays = max(1, min(730, (int) ($request->getUserVar('logRetentionDays') ?: 90)));
-                $outboxRetentionDays = max(1, min(365, (int) ($request->getUserVar('outboxRetentionDays') ?: 30)));
-
-                $this->updateSetting($contextId, 'botId', $botId);
-                // Không gửi khóa hiện có về trình duyệt. Để trống khi lưu nghĩa
-                // là giữ nguyên API key đã cấu hình trước đó.
-                if ($apiKey !== '') {
-                    $this->updateSetting($contextId, 'apiKey', $apiKey);
-                }
-                $this->updateSetting($contextId, 'logRetentionDays', $logRetentionDays);
-                $this->updateSetting($contextId, 'outboxRetentionDays', $outboxRetentionDays);
-
-                $this->writeDebug("saveApiSettings: Đã lưu API Settings (logRetention={$logRetentionDays}d, outboxRetention={$outboxRetentionDays}d).");
-
-                return new JSONMessage(true);
+                return ZaloSettingsController::handleSaveApiSettings($this, $request);
 
             // =================================================================
             // SETTINGS TAB — Cấu hình API và nhóm nhận thông báo
             // =================================================================
             case 'settingsTab':
-                $contextId = 0;
-                $context = $request->getContext();
-                if ($context)
-                    $contextId = $context->getId();
-
-                $saveUrl = $this->getPluginManageUrl($request, 'saveSettings');
-
-                $groupsJson = $this->getSetting($contextId, 'recipientGroups');
-                $groups = $groupsJson ? json_decode($groupsJson, true) : [];
-                if (!is_array($groups))
-                    $groups = [];
-
-                $templateMgr = TemplateManager::getManager($request);
-                $templateMgr->assign([
-                    'pluginName' => $this->getName(),
-                    'recipientGroupsJson' => json_encode($groups, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP),
-                    'saveUrl' => $saveUrl,
-                ]);
-
-                return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('settingsForm.tpl')));
+                return ZaloSettingsController::handleSettingsTab($this, $request);
 
             case 'saveSettings':
                 if (!$this->isValidWriteRequest($request)) {
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
-                $contextId = 0;
-                $context = $request->getContext();
-                if ($context)
-                    $contextId = $context->getId();
-
-                $groupsJsonRaw = $request->getUserVar('recipientGroupsJson') ?? '[]';
-
-                $groups = json_decode($groupsJsonRaw, true);
-                if (!is_array($groups))
-                    $groups = [];
-
-                $allowedEvents = [
-                    'SUBMISSION',
-                    'DECISION',
-                    'PUBLISH',
-                    'UNPUBLISH',
-                    'REVIEW_REQUEST',
-                    'REVIEW_RESPONSE',
-                    'REVIEW_REMINDER',
-                    'REVIEW_COMPLETED',
-                ];
-
-                // Clean up — chỉ lưu nhóm có tên hoặc số điện thoại
-                $cleanGroups = [];
-                foreach ($groups as $group) {
-                    if (!is_array($group)) {
-                        continue;
-                    }
-
-                    $name = trim($group['name'] ?? '');
-
-                    $rawPhones = [];
-                    if (isset($group['phones'])) {
-                        $rawPhones = is_array($group['phones'])
-                            ? $group['phones']
-                            : preg_split('/[,\r\n;]+/', (string) $group['phones']);
-                    }
-                    $phones = array_values(array_unique(array_filter(array_map('trim', $rawPhones), function ($phone) {
-                        return $phone !== '';
-                    })));
-
-                    $rawEvents = isset($group['events']) && is_array($group['events'])
-                        ? $group['events']
-                        : [];
-                    $events = array_values(array_unique(array_filter($rawEvents, function ($event) use ($allowedEvents) {
-                        return in_array($event, $allowedEvents, true);
-                    })));
-
-                    if (!empty($name) || !empty($phones)) {
-                        $cleanGroups[] = [
-                            'name' => $name,
-                            'phones' => $phones,
-                            'events' => $events,
-                        ];
-                    }
-                }
-
-                $this->updateSetting($contextId, 'recipientGroups', json_encode($cleanGroups, JSON_UNESCAPED_UNICODE));
-
-                $this->writeDebug("saveSettings: Đã lưu groups=" . count($cleanGroups));
-
-                return new JSONMessage(true);
+                return ZaloSettingsController::handleSaveSettings($this, $request);
 
             // =================================================================
             // MESSAGE TEMPLATES TAB
             // =================================================================
             case 'templatesTab':
-                $contextId = 0;
-                $context = $request->getContext();
-                if ($context)
-                    $contextId = $context->getId();
-
-                $saveUrl = $this->getPluginManageUrl($request, 'saveTemplates');
-
-                $templates = $this->getMessageTemplates();
-                $defaultTemplates = $this->getDefaultTemplates();
-                $templateMgr = TemplateManager::getManager($request);
-                $templateMgr->assign([
-                    'pluginName' => $this->getName(),
-                    'templatesJson' => json_encode($templates, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP),
-                    'defaultTemplatesJson' => json_encode($defaultTemplates, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP),
-                    'saveUrl' => $saveUrl,
-                ]);
-
-                return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('notificationTemplatesForm.tpl')));
+                return ZaloSettingsController::handleTemplatesTab($this, $request);
 
             // =================================================================
             // REVIEW REMINDER DASHBOARD
             // =================================================================
             case 'reviewDashboardTab':
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                $submissions = ReviewReminderDashboardService::getSubmissions($contextId);
-                $reviewerCount = 0;
-                $overdueCount = 0;
-                foreach ($submissions as $submission) {
-                    $reviewerCount += count($submission['reviewers']);
-                    foreach ($submission['reviewers'] as $reviewer) {
-                        if ($reviewer['dueClass'] === 'overdue') {
-                            $overdueCount++;
-                        }
-                    }
-                }
-                $templateMgr = TemplateManager::getManager($request);
-                $templateMgr->assign([
-                    'submissions' => $submissions,
-                    'submissionCount' => count($submissions),
-                    'reviewerCount' => $reviewerCount,
-                    'overdueCount' => $overdueCount,
-                    'sendReminderUrl' => $this->getPluginManageUrl($request, 'sendReviewReminder'),
-                ]);
-                return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('reviewReminderDashboard.tpl')));
+                return ZaloReviewReminderController::handleDashboardTab($this, $request);
+
+            case 'submissionsDashboardTab':
+                return ZaloReviewReminderController::handleSubmissionsDashboardTab($this, $request);
 
             case 'sendReviewReminder':
                 if (strtoupper((string) $request->getRequestMethod()) !== 'POST' || !$request->checkCSRF()) {
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                $scope = (string) $request->getUserVar('scope');
-                $assignments = [];
-                if ($scope === 'reviewer') {
-                    $assignment = ReviewReminderDashboardService::getActiveAssignment((int) $request->getUserVar('reviewId'), $contextId);
-                    if ($assignment) {
-                        $assignments[] = $assignment;
-                    }
-                } elseif ($scope === 'submission') {
-                    $assignments = ReviewReminderDashboardService::getActiveAssignmentsForSubmission(
-                        (int) $request->getUserVar('submissionId'), $contextId
-                    );
-                }
-                if (empty($assignments)) {
-                    return new JSONMessage(false, 'Không tìm thấy lượt phản biện đang mở trong tạp chí này.');
-                }
+                return ZaloReviewReminderController::sendReviewReminder($this, $request);
 
-                $sent = 0;
-                $skipped = [];
-                foreach ($assignments as $assignment) {
-                    $submission = \DAORegistry::getDAO('SubmissionDAO')->getById((int) $assignment->getSubmissionId());
-                    $result = ReviewNotificationHandler::sendManualReminder($assignment, $submission);
-                    if (!empty($result['success'])) {
-                        $sent++;
-                    } else {
-                        $skipped[] = $result['reviewerName'] . ': ' . $result['message'];
-                    }
-                }
-                if ($sent === 0) {
-                    return new JSONMessage(false, implode('; ', $skipped));
-                }
-                $message = "Gateway đã chấp nhận tin nhắc cho {$sent} phản biện viên.";
-                if ($skipped) {
-                    $message .= ' Bỏ qua: ' . implode('; ', $skipped);
-                }
-                return new JSONMessage(true, $message);
+            case 'downloadReport':
+                ZaloReviewReminderController::handleDownloadReport($this, $request);
+                return new JSONMessage(true);
 
             case 'saveTemplates':
                 if (!$this->isValidWriteRequest($request)) {
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
-                $contextId = 0;
-                $context = $request->getContext();
-                if ($context)
-                    $contextId = $context->getId();
-
-                $templatesJsonRaw = $request->getUserVar('templatesJson') ?? '{}';
-                $templates = json_decode($templatesJsonRaw, true);
-                if (!is_array($templates))
-                    $templates = [];
-
-                $allowedRoles = ['editor', 'reviewer', 'author'];
-                $allowedEvents = ['submission', 'decision', 'initial_decline', 'review_started', 'publish', 'unpublish', 'reminder', 'review_request', 'review_response', 'review_completed', 'author_revision', 'editor_assignment'];
-                $cleanTemplates = [];
-
-                foreach ($allowedRoles as $role) {
-                    $cleanTemplates[$role] = [];
-                    $roleTemplates = isset($templates[$role]) && is_array($templates[$role]) ? $templates[$role] : [];
-                    foreach ($allowedEvents as $event) {
-                        if (isset($roleTemplates[$event])) {
-                            $cleanTemplates[$role][$event] = (string) $roleTemplates[$event];
-                        }
-                    }
-                }
-
-                // Remove JSON_UNESCAPED_UNICODE to escape 4-byte emojis as \uXXXX\uXXXX surrogate pairs.
-                // This prevents OJS MySQL (utf8) from truncating or replacing emojis with ????
-                $this->updateSetting($contextId, 'messageTemplates', json_encode($cleanTemplates));
-                $this->writeDebug("saveTemplates: Đã lưu mẫu thông báo mới");
-
-                return new JSONMessage(true);
+                return ZaloSettingsController::handleSaveTemplates($this, $request);
 
             // =================================================================
             // ACTIVITY LOG
             // =================================================================
             case 'activityLog':
-                $filterType = $request->getUserVar('filterType');
-                $validTypes = self::getValidActivityLogTypes();
-                if ($filterType && !in_array($filterType, $validTypes, true)) {
-                    $filterType = null;
-                }
-
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                $statsDate = (string) ($request->getUserVar('statsDate') ?? date('Y-m-d'));
-                $entries = ActivityLogger::getRecentEntries(PHP_INT_MAX, $filterType, $contextId);
-                $outboxStats = ZaloOutboxRepository::getStats($contextId);
-                $dailySummary = ActivityLogger::getDailySummary($statsDate, $contextId);
-
-                $logRetentionDays = (int) ($this->getSetting($contextId, 'logRetentionDays') ?: 90);
-                if ($logRetentionDays <= 0) $logRetentionDays = 90;
-
-                $templateMgr = TemplateManager::getManager($request);
-                $templateMgr->assign([
-                    'entries' => $entries,
-                    'filterType' => $filterType,
-                    'totalEntries' => count($entries),
-                    'pluginName' => $this->getName(),
-                    'outboxStats' => $outboxStats,
-                    'dailyStats' => $dailySummary,
-                    'selectedStatsDate' => $statsDate,
-                    'logRetentionDays' => $logRetentionDays,
-                    'statsActionUrl' => $this->getPluginManageUrl($request, 'dailySummaryStats'),
-                ]);
-
-                return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('activityLog.tpl')));
+                return ZaloActivityLogController::handleActivityLog($this, $request);
 
             case 'dailySummaryStats':
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                $statsDate = (string) ($request->getUserVar('statsDate') ?? date('Y-m-d'));
-                $dailySummary = ActivityLogger::getDailySummary($statsDate, $contextId);
-                return new JSONMessage(true, $dailySummary);
+                return ZaloActivityLogController::handleDailySummaryStats($this, $request);
 
             case 'exportLog':
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                $filterType = $request->getUserVar('filterType');
-                $validTypes = self::getValidActivityLogTypes();
-                if ($filterType && !in_array($filterType, $validTypes, true)) {
-                    $filterType = null;
-                }
-
-                $logFileLocation = ActivityLogger::getLogFileLocation($contextId);
-                $entries = ActivityLogger::getRecentEntries(PHP_INT_MAX, $filterType, $contextId);
-                $content = '';
-                foreach (array_reverse($entries) as $entry) {
-                    $content .= json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . PHP_EOL;
-                }
-                $filename = $filterType
-                    ? preg_replace('/[^A-Z0-9_]/', '_', $filterType) . '_' . basename($logFileLocation)
-                    : basename($logFileLocation);
-
-                header('Content-Description: File Transfer');
-                header('Content-Type: text/plain');
-                header('Content-Disposition: attachment; filename="' . $filename . '"');
-                header('Expires: 0');
-                header('Cache-Control: must-revalidate');
-                header('Pragma: public');
-                header('Content-Length: ' . strlen($content));
-                echo $content;
-                exit;
+                ZaloActivityLogController::handleExportLog($this, $request);
+                return new JSONMessage(true);
 
             // =================================================================
             // OUTBOX & RETRY DASHBOARD
             // =================================================================
             case 'outboxDashboardTab':
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                $statusFilter = (string) ($request->getUserVar('statusFilter') ?? 'all');
-                
-                $entries = ZaloOutboxRepository::getOutboxEntries($contextId, $statusFilter, 100);
-                $stats = ZaloOutboxRepository::getStats($contextId);
-                $outboxRetentionDays = (int) ($this->getSetting($contextId, 'outboxRetentionDays') ?: 30);
-                if ($outboxRetentionDays <= 0) $outboxRetentionDays = 30;
-                
-                $templateMgr = TemplateManager::getManager($request);
-                $templateMgr->assign([
-                    'entries' => $entries,
-                    'stats' => $stats,
-                    'totalItems' => count($entries),
-                    'currentFilter' => $statusFilter,
-                    'outboxRetentionDays' => $outboxRetentionDays,
-                    'outboxActionUrl' => $this->getPluginManageUrl($request, 'outboxAction'),
-                ]);
-                return new JSONMessage(true, $templateMgr->fetch($this->getTemplateResource('outboxDashboard.tpl')));
+                return ZaloOutboxController::handleDashboardTab($this, $request);
 
             case 'retryOutboxItem':
                 if (!$this->isValidWriteRequest($request)) {
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                $outboxId = (int) $request->getUserVar('outboxId');
-                if ($outboxId <= 0) {
-                    return new JSONMessage(false, 'ID tin nhắn không hợp lệ.');
-                }
-                
-                $success = ZaloOutboxRepository::retryItem($outboxId, $contextId);
-                if ($success) {
-                    $this->writeDebug("retryOutboxItem: Đã đưa tin #{$outboxId} về trạng thái chờ gửi");
-                    return new JSONMessage(true, "Tin nhắn #{$outboxId} đã được đưa về trạng thái Chờ gửi.");
-                }
-                return new JSONMessage(false, "Không thể cập nhật tin nhắn #{$outboxId}.");
+                return ZaloOutboxController::retryItem($this, $request);
 
             case 'retryAllOutbox':
                 if (!$this->isValidWriteRequest($request)) {
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                
-                $count = ZaloOutboxRepository::retryAllFailed($contextId);
-                $this->writeDebug("retryAllOutbox: Đã đưa {$count} tin lỗi về trạng thái chờ gửi");
-                return new JSONMessage(true, "Đã đưa {$count} tin nhắn lỗi về trạng thái Chờ gửi.");
+                return ZaloOutboxController::retryAll($this, $request);
 
             case 'deleteOutboxItem':
                 if (!$this->isValidWriteRequest($request)) {
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                $outboxId = (int) $request->getUserVar('outboxId');
-                if ($outboxId <= 0) {
-                    return new JSONMessage(false, 'ID tin nhắn không hợp lệ.');
-                }
-                
-                $success = ZaloOutboxRepository::deleteItem($outboxId, $contextId);
-                if ($success) {
-                    $this->writeDebug("deleteOutboxItem: Đã xóa tin #{$outboxId}");
-                    return new JSONMessage(true, "Đã xóa tin nhắn #{$outboxId} khỏi hàng đợi.");
-                }
-                return new JSONMessage(false, "Không thể xóa tin nhắn #{$outboxId}.");
+                return ZaloOutboxController::deleteItem($this, $request);
 
             case 'clearSentOutbox':
                 if (!$this->isValidWriteRequest($request)) {
                     return new JSONMessage(false, __('form.csrfInvalid'));
                 }
-                $context = $request->getContext();
-                $contextId = $context ? (int) $context->getId() : 0;
-                
-                $count = ZaloOutboxRepository::clearSent($contextId);
-                $this->writeDebug("clearSentOutbox: Đã dọn dẹp {$count} tin đã gửi");
-                return new JSONMessage(true, "Đã dọn dẹp {$count} tin nhắn đã gửi thành công.");
+                return ZaloOutboxController::clearSent($this, $request);
         }
 
         return parent::manage($args, $request);
     }
 
-    private static function getValidActivityLogTypes(): array
+    public static function getValidActivityLogTypes(): array
     {
-        return [
-            ActivityLogger::TYPE_SUBMISSION,
-            ActivityLogger::TYPE_DECISION,
-            ActivityLogger::TYPE_PUBLISH,
-            ActivityLogger::TYPE_UNPUBLISH,
-            ActivityLogger::TYPE_ZALO_SEND,
-            ActivityLogger::TYPE_ERROR,
-            ActivityLogger::TYPE_REVIEW_REQUEST,
-            ActivityLogger::TYPE_REVIEW_RESPONSE,
-            ActivityLogger::TYPE_REVIEW_REMINDER,
-            ActivityLogger::TYPE_REVIEW_COMPLETED,
-        ];
+        return ZaloActivityLogController::getValidTypes();
     }
 
     // =========================================================================
@@ -1138,124 +942,18 @@ class ZaloNotificationPlugin extends GenericPlugin
         if (!is_array($templates) || empty($templates)) {
             return $defaultTemplates;
         }
-        return $this->ensureNavigationDetails(array_replace_recursive($defaultTemplates, $templates));
+        return ZaloTemplateDefaults::ensureNavigationDetails(array_replace_recursive($defaultTemplates, $templates));
     }
 
-    private function getDefaultTemplates(): array
+    public function getDefaultTemplates(): array
     {
-        $templates = [];
-        $templates['editor'] = [
-            'submission' => "▣ BÀI NỘP MỚI\n\n› Bài: {title}\n› Tác giả: {author}\n{abstract_if_any}› Trạng thái: Đã hoàn tất nộp bài\n\n→ Vui lòng đăng nhập OJS để phân công xử lý.\n⏱ Thời gian: {timestamp}",
-            'decision' => "▣ QUYẾT ĐỊNH BIÊN TẬP\n\n› Bài: {title}\n› Tác giả: {author}\n› Giai đoạn: {stageName}\n› Quyết định: {decisionDesc}\n› Biên tập viên: {editorName}\n\n⏱ Thời gian: {timestamp}",
-            'initial_decline' => "Bạn không có thông báo cho sự kiện này.",
-            'review_started' => "Bạn không có thông báo cho sự kiện này.",
-            'publish' => "✓ BÀI BÁO ĐÃ XUẤT BẢN\n\n› Bài: {title}\n› Tác giả: {author}\n{issueString_if_any}› Ngày xuất bản: {datePublished}\n\n⏱ Thời gian: {timestamp}",
-            'unpublish' => "! HỦY XUẤT BẢN\n\n› Bài: {title}\n› Tác giả: {author}\n\n→ Vui lòng kiểm tra lại thông tin xuất bản trên OJS.\n⏱ Thời gian: {timestamp}",
-            'reminder' => "! NHẮC HẠN PHẢN BIỆN\n\n› Bài: {title}\n› Phản biện viên: {reviewerName}\n› Hạn chót: {deadline}\n› Tình trạng: {daysLeft}\n› Vòng phản biện: {round}\n\n⏱ Thời gian: {timestamp}",
-            'review_request' => "▣ ĐÃ MỜI PHẢN BIỆN\n\n› Bài: {title}\n› Tác giả: {author}\n› Phản biện viên: {reviewerName}\n› Hạn nộp đánh giá: {deadline}\n› Hạn phản hồi: {responseDeadline}\n› Vòng phản biện: {round}\n\n⏱ Thời gian: {timestamp}",
-            'review_response' => "▣ PHẢN HỒI LỜI MỜI PHẢN BIỆN\n\n› Bài: {title}\n› Tác giả: {author}\n› Phản biện viên: {reviewerName}\n› Trạng thái: {responseStatus}\n› Hạn nộp đánh giá: {deadline}\n\n⏱ Thời gian: {timestamp}",
-            'review_completed' => "✓ PHẢN BIỆN ĐÃ NỘP ĐÁNH GIÁ\n\n› Bài: {title}\n› Phản biện viên: {reviewerName}\n› Đề xuất: {recommendationDesc}\n\n→ Vui lòng đăng nhập OJS để xem chi tiết.\n⏱ Thời gian: {timestamp}",
-            'author_revision' => "▣ TÁC GIẢ ĐÃ NỘP BẢN CHỈNH SỬA\n\n› Bài: {title}\n› Tác giả: {author}\n› Giai đoạn: {stageName}\n› Vòng phản biện: {round}\n\n→ Vui lòng đăng nhập OJS để kiểm tra bản chỉnh sửa.\n⏱ Thời gian: {timestamp}",
-            'editor_assignment' => "▣ PHÂN CÔNG BIÊN TẬP\n\n› Xin chào: {editorName}\n› Bạn được phân công xử lý bài: {title}\n› Tác giả: {author}\n› Vai trò: {editorRole}\n› Giai đoạn: {stageName}\n› Người phân công: {assignedBy}\n\n⏱ Thời gian: {timestamp}",
-        ];
-
-        $templates['reviewer'] = [
-            'submission' => "Bạn không có thông báo cho sự kiện này.",
-            'decision' => "▣ CẬP NHẬT BÀI PHẢN BIỆN\n\n› Bài: {title}\n› Quyết định: {decisionDesc}\n\nCảm ơn bạn đã tham gia đánh giá.\n⏱ Thời gian: {timestamp}",
-            'initial_decline' => "Bạn không có thông báo cho sự kiện này.",
-            'review_started' => "Bạn không có thông báo cho sự kiện này.",
-            'publish' => "Bạn không có thông báo cho sự kiện này.",
-            'unpublish' => "Bạn không có thông báo cho sự kiện này.",
-            'reminder' => "! NHẮC HẠN PHẢN BIỆN\n\n› Bài: {title}\n› Hạn chót: {deadline}\n› Tình trạng: {daysLeft}\n› Vòng phản biện: {round}\n\n→ Vui lòng đăng nhập OJS để hoàn tất đánh giá.\n⏱ Thời gian: {timestamp}",
-            'review_request' => "▣ LỜI MỜI PHẢN BIỆN\n\n› Bài: {title}\n› Hạn nộp đánh giá: {deadline}\n› Hạn phản hồi: {responseDeadline}\n› Vòng phản biện: {round}\n\n→ Vui lòng đăng nhập OJS để phản hồi lời mời.\n⏱ Thời gian: {timestamp}",
-            'review_response' => "Bạn không có thông báo cho sự kiện này.",
-            'review_completed' => "Bạn không có thông báo cho sự kiện này.",
-            'author_revision' => "Bạn không có thông báo cho sự kiện này.",
-            'editor_assignment' => "Bạn không có thông báo cho sự kiện này.",
-        ];
-
-        $templates['author'] = [
-            'submission' => "✓ NỘP BÀI THÀNH CÔNG\n\n› Bài: {title}\n› Tác giả: {author}\n\nBài viết đã được ghi nhận trên hệ thống. Ban biên tập sẽ sớm phân công xử lý.\n⏱ Thời gian: {timestamp}",
-            'decision' => "▣ BÀI BÁO ĐÃ CÓ KẾT QUẢ PHẢN BIỆN\n\n› Bài: {title}\n› Yêu cầu: {decisionDesc}\n\n→ Đăng nhập OJS để xem nội dung và thực hiện yêu cầu: {authorUrl}\n⏱ Thời gian: {timestamp}",
-            'initial_decline' => "▣ QUYẾT ĐỊNH BIÊN TẬP BAN ĐẦU\n\n› Bài: {title}\n› Quyết định: {decisionDesc}\n\n→ Đăng nhập OJS để xem thông tin chi tiết: {authorUrl}\n⏱ Thời gian: {timestamp}",
-            'review_started' => "▣ BÀI BÁO ĐÃ CHUYỂN SANG PHẢN BIỆN\n\n› Bài: {title}\n› Trạng thái: Đã chuyển sang {stageName}\n\nBan biên tập đã bắt đầu quy trình phản biện bài viết.\n\n→ Theo dõi bài trên OJS: {authorUrl}\n⏱ Thời gian: {timestamp}",
-            'publish' => "✓ BÀI BÁO ĐÃ XUẤT BẢN\n\n› Bài: {title}\n{issueString_if_any}Chúc mừng tác giả.\n⏱ Thời gian: {timestamp}",
-            'unpublish' => "! BÀI BÁO ĐÃ BỊ HỦY XUẤT BẢN\n\n› Bài: {title}\n\n→ Vui lòng liên hệ Ban biên tập để biết thêm thông tin.\n⏱ Thời gian: {timestamp}",
-            'reminder' => "Bạn không có thông báo cho sự kiện này.",
-            'review_request' => "Bạn không có thông báo cho sự kiện này.",
-            'review_response' => "Bạn không có thông báo cho sự kiện này.",
-            'review_completed' => "Bạn không có thông báo cho sự kiện này.",
-            'author_revision' => "Bạn không có thông báo cho sự kiện này.",
-            'editor_assignment' => "Bạn không có thông báo cho sự kiện này.",
-        ];
-
-        return $this->ensureNavigationDetails($templates);
-    }
-
-    /**
-     * Ensure upgraded installations also receive IDs and clickable deep links,
-     * including when their templates were saved before these variables existed.
-     */
-    private function ensureNavigationDetails(array $templates): array
-    {
-        foreach (['editor', 'reviewer', 'author'] as $role) {
-            if (empty($templates[$role]) || !is_array($templates[$role])) {
-                continue;
-            }
-
-            foreach ($templates[$role] as $event => $template) {
-                $template = (string) $template;
-                if ($template === '' || strpos($template, 'Bạn không có thông báo') !== false) {
-                    continue;
-                }
-
-                // Chuẩn hóa nhãn cũ trong các mẫu đã được lưu trước khi nâng cấp.
-                $template = str_replace('Mã bài:', 'ID bài:', $template);
-                $templates[$role][$event] = $template;
-
-                $details = [];
-                if (strpos($template, '{submissionId}') === false) {
-                    $details[] = '› ID bài: {submissionId}';
-                }
-                if ($role === 'editor') {
-                    if (strpos($template, '{stageId}') === false) {
-                        $details[] = '› Mã giai đoạn: {stageId}';
-                    }
-                    if (strpos($template, '{workflowUrl}') === false) {
-                        $details[] = '→ Mở đúng giai đoạn: {workflowUrl}';
-                    }
-                } elseif ($role === 'reviewer') {
-                    if (in_array($event, ['reminder', 'review_request'], true) && strpos($template, '{reviewId}') === false) {
-                        $details[] = '› Mã phản biện: {reviewId}';
-                    }
-                    if (strpos($template, '{reviewerUrl}') === false) {
-                        $details[] = '→ Mở nhiệm vụ phản biện: {reviewerUrl}';
-                    }
-                } else {
-                    if ($event === 'decision' && strpos($template, '{decisionDesc}') === false) {
-                        $details[] = '› Yêu cầu: {decisionDesc}';
-                    }
-                    $urlVariable = $event === 'publish' ? '{publicUrl}' : '{authorUrl}';
-                    if (strpos($template, $urlVariable) === false) {
-                        $details[] = $event === 'publish'
-                            ? '→ Xem bài đã xuất bản: {publicUrl}'
-                            : '→ Mở bài trên OJS: {authorUrl}';
-                    }
-                }
-
-                if ($details) {
-                    $templates[$role][$event] = rtrim($template) . "\n\n" . implode("\n", $details);
-                }
-            }
-        }
-
-        return $templates;
+        return ZaloTemplateDefaults::get();
     }
 
     /**
      * Ghi log debug nhanh vào debug.txt
      */
-    private function writeDebug(string $message): void
+    public function writeDebug(string $message): void
     {
         self::writeSecureDebug($message, 'Plugin');
     }

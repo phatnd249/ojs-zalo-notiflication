@@ -17,18 +17,18 @@
     <div class="zalo-editor-container">
         <div class="zalo-sidebar">
             <div class="zalo-sidebar-header">
-                <h2><i class="fa fa-comments-o"></i> Zalo Templates</h2>
+                <h2><i class="fa fa-envelope-o" style="color:#0066a6;"></i> Mẫu tin Zalo</h2>
                 <p>Cấu hình mẫu gửi tin nhắn</p>
             </div>
             <ul class="zalo-role-list">
                 <li class="zalo-role-item active" data-role="editor">
-                    <span class="zalo-role-icon"><i class="fa fa-briefcase"></i></span> Ban biên tập
+                    Ban biên tập
                 </li>
                 <li class="zalo-role-item" data-role="reviewer">
-                    <span class="zalo-role-icon"><i class="fa fa-search"></i></span> Phản biện viên
+                    Phản biện viên
                 </li>
                 <li class="zalo-role-item" data-role="author">
-                    <span class="zalo-role-icon"><i class="fa fa-pencil"></i></span> Tác giả
+                    Tác giả
                 </li>
             </ul>
         </div>
@@ -37,23 +37,23 @@
             <div class="zalo-content-header">
                 <div>
                     <h3 class="zalo-content-title" id="roleTitle">Mẫu thông báo Ban biên tập</h3>
-                    <p class="zalo-content-subtitle" style="margin-bottom:0;">Quản lý nội dung tin nhắn Zalo gửi cho các vai trò.</p>
+                    <p class="zalo-content-subtitle">Quản lý nội dung tin nhắn Zalo gửi cho các vai trò.</p>
                 </div>
             </div>
 
             <div class="zalo-event-tabs" id="eventTabs">
-                <div class="zalo-event-tab active" data-event="submission"><i class="fa fa-inbox"></i> Bài nộp mới</div>
-                <div class="zalo-event-tab" data-event="decision"><i class="fa fa-clipboard"></i> Quyết định</div>
-                <div class="zalo-event-tab" data-event="initial_decline"><i class="fa fa-ban"></i> Từ chối ban đầu</div>
-                <div class="zalo-event-tab" data-event="review_started"><i class="fa fa-search"></i> Bắt đầu phản biện</div>
-                <div class="zalo-event-tab" data-event="publish"><i class="fa fa-bullhorn"></i> Xuất bản</div>
-                <div class="zalo-event-tab" data-event="unpublish"><i class="fa fa-exclamation-triangle"></i> Hủy xuất bản</div>
-                <div class="zalo-event-tab" data-event="reminder"><i class="fa fa-clock-o"></i> Nhắc nhở</div>
-                <div class="zalo-event-tab" data-event="review_request"><i class="fa fa-user-plus"></i> Mời phản biện</div>
-                <div class="zalo-event-tab" data-event="review_response"><i class="fa fa-reply"></i> PB phản hồi</div>
-                <div class="zalo-event-tab" data-event="review_completed"><i class="fa fa-check-circle"></i> PB đã nộp</div>
-                <div class="zalo-event-tab" data-event="author_revision"><i class="fa fa-upload"></i> Tác giả đã sửa</div>
-                <div class="zalo-event-tab" data-event="editor_assignment"><i class="fa fa-user-circle"></i> Phân công BTV</div>
+                <div class="zalo-event-tab active" data-event="submission">Bài nộp mới</div>
+                <div class="zalo-event-tab" data-event="decision">Quyết định</div>
+                <div class="zalo-event-tab" data-event="initial_decline">Từ chối ban đầu</div>
+                <div class="zalo-event-tab" data-event="review_started">Bắt đầu phản biện</div>
+                <div class="zalo-event-tab" data-event="publish">Xuất bản</div>
+                <div class="zalo-event-tab" data-event="unpublish">Hủy xuất bản</div>
+                <div class="zalo-event-tab" data-event="reminder">Nhắc nhở</div>
+                <div class="zalo-event-tab" data-event="review_request">Mời phản biện</div>
+                <div class="zalo-event-tab" data-event="review_response">PB phản hồi</div>
+                <div class="zalo-event-tab" data-event="review_completed">PB đã nộp</div>
+                <div class="zalo-event-tab" data-event="author_revision">Tác giả đã sửa</div>
+                <div class="zalo-event-tab" data-event="editor_assignment">Phân công BTV</div>
             </div>
 
             <div class="zalo-editor-wrapper" style="margin-bottom: 15px;">
@@ -105,100 +105,166 @@
 <style>
     .zalo-editor-container {
         display: flex;
-        background: #ffffff;
-        border: 1px solid #e1e4e8;
-        border-radius: 8px;
-        overflow: hidden;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        gap: 24px;
+        padding: 4px 2px 14px !important;
         margin-bottom: 15px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     .zalo-sidebar {
-        width: 250px;
-        background: #fafbfc;
-        border-right: 1px solid #e1e4e8;
-        padding: 1.2rem 0;
+        width: 210px;
+        flex-shrink: 0;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
     }
     .zalo-sidebar-header {
-        padding: 0 1.2rem 1.2rem;
-        border-bottom: 1px solid #e1e4e8;
-        margin-bottom: 0.8rem;
+        padding: 0 0 14px !important;
+        border-bottom: none !important;
+        margin-bottom: 8px;
     }
-    .zalo-sidebar-header h2 { font-size: 1.1rem; margin: 0; color: #0068ff; }
-    .zalo-sidebar-header p { font-size: 0.85rem; color: #666; margin: 4px 0 0; }
-    .zalo-role-list { list-style: none; padding: 0 0.8rem; margin: 0; }
-    .zalo-role-item {
-        padding: 0.7rem 1rem;
-        margin-bottom: 0.3rem;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        color: #555;
+    .zalo-sidebar-header h2 {
+        font-size: 1.35em !important;
+        margin: 0 0 4px !important;
+        color: #0066a6 !important;
+        font-weight: 700 !important;
         display: flex;
         align-items: center;
         gap: 8px;
     }
-    .zalo-role-item:hover { background: #f0f4f8; color: #0068ff; }
-    .zalo-role-item.active {
-        background: rgba(0, 104, 255, 0.08);
-        color: #0068ff;
-        font-weight: 600;
-        border-left: 3px solid #0068ff;
+    .zalo-sidebar-header p {
+        font-size: 14px !important;
+        color: #65717c !important;
+        margin: 0 !important;
     }
-    .zalo-main-content { padding: 1.5rem; flex: 1; }
-    .zalo-content-header { margin-bottom: 1.2rem; }
-    .zalo-content-title { font-size: 1.2rem; margin-top: 0; color: #333; }
+    .zalo-role-list {
+        list-style: none;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .zalo-role-item {
+        padding: 9px 14px !important;
+        margin-bottom: 0 !important;
+        border-radius: 6px !important;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 14px !important;
+        color: #334155;
+        background: #f6f9fb;
+        border: 1px solid #dce5eb !important;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.15s ease;
+    }
+    .zalo-role-item:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8 !important;
+        color: #0066a6;
+    }
+    .zalo-role-item.active {
+        background: #0066a6 !important;
+        color: #ffffff !important;
+        font-weight: 600;
+        border-color: #0066a6 !important;
+        border-left: 1px solid #0066a6 !important;
+    }
+    .zalo-main-content {
+        padding: 0 !important;
+        flex: 1;
+        min-width: 0;
+        background: transparent !important;
+    }
+    .zalo-content-header {
+        margin-bottom: 14px !important;
+    }
+    .zalo-content-title {
+        font-size: 1.25em !important;
+        font-weight: 700;
+        margin: 0 0 4px !important;
+        color: #0066a6 !important;
+    }
+    .zalo-content-subtitle {
+        font-size: 14px !important;
+        color: #65717c !important;
+        margin: 0 !important;
+    }
     .zalo-event-tabs {
         display: flex;
-        gap: 0.5rem;
-        border-bottom: 1px solid #e1e4e8;
-        margin-bottom: 1.2rem;
+        gap: 6px;
+        border-bottom: none !important;
+        margin-bottom: 14px !important;
         flex-wrap: wrap;
     }
     .zalo-event-tab {
-        padding: 0.6rem 0.8rem;
-        font-size: 0.9rem;
+        padding: 6px 13px !important;
+        font-size: 13.5px !important;
         font-weight: 500;
-        color: #666;
+        color: #1e293b;
+        background: #eef5fa;
+        border: 1px solid #d8e7f1 !important;
+        border-radius: 18px !important;
         cursor: pointer;
-        border-bottom: 2px solid transparent;
-        margin-bottom: -1px;
+        white-space: nowrap;
+        line-height: 1.4;
+        margin-bottom: 0 !important;
+        border-bottom: 1px solid #d8e7f1 !important;
+        transition: all 0.15s ease;
     }
-    .zalo-event-tab:hover { color: #0068ff; }
-    .zalo-event-tab.active { color: #0068ff; border-bottom-color: #0068ff; }
+    .zalo-event-tab:hover {
+        background: #e0f2fe;
+        color: #0066a6;
+        border-color: #bae6fd !important;
+    }
+    .zalo-event-tab.active {
+        color: #ffffff !important;
+        background: #0066a6 !important;
+        border-color: #0066a6 !important;
+        border-bottom-color: #0066a6 !important;
+        font-weight: 600;
+    }
     .zalo-editor-wrapper { flex: 1; display: flex; flex-direction: column; }
     .zalo-textarea {
         width: 100%;
-        height: 360px;
-        min-height: 320px;
-        padding: 1.1rem;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
+        height: 340px;
+        min-height: 300px;
+        padding: 14px !important;
+        border: 1px solid #d8e0e6 !important;
+        border-radius: 6px !important;
         font-family: inherit;
-        font-size: 1.05rem;
-        line-height: 1.65;
+        font-size: 14px !important;
+        line-height: 1.6;
         resize: vertical;
-        background: #fafbfc;
+        background: #ffffff !important;
         box-sizing: border-box;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
     }
     .zalo-textarea:focus {
-        border-color: #0068ff;
+        border-color: #0066a6 !important;
         outline: none;
-        box-shadow: 0 0 0 3px rgba(0, 104, 255, 0.1);
+        box-shadow: 0 0 0 2px rgba(0, 102, 166, 0.15) !important;
         background: #fff;
     }
     .zalo-variables-panel {
         width: 100%;
         background: #f8fafc;
-        border: 1px solid #dce3e8;
-        border-radius: 6px;
+        border: 1px solid #dce5eb !important;
+        border-radius: 6px !important;
         padding: 0;
-        margin-top: 15px;
+        margin-top: 14px !important;
     }
     .zalo-variables-title {
-        font-size: 0.9rem;
+        font-size: 13.5px !important;
         font-weight: 600;
         color: #334155;
         cursor: pointer;
-        padding: 10px 12px;
+        padding: 10px 14px !important;
         list-style: none;
         user-select: none;
     }
@@ -206,34 +272,34 @@
     .zalo-variables-title::after { content: '\f078'; float: right; font-family: FontAwesome; color: #64748b; }
     .zalo-variables-panel[open] .zalo-variables-title::after { content: '\f077'; }
     .zalo-variables-panel[open] .zalo-variables-title small { display: none; }
-    .zalo-variables-title small { margin-left: 8px; color: #7b8794; font-weight: 400; }
-    #variableCount { display: inline-block; min-width: 18px; margin-left: 5px; padding: 1px 6px; border-radius: 10px; background: #e5edf3; text-align: center; font-size: .8rem; }
+    .zalo-variables-title small { margin-left: 8px; color: #7b8794; font-weight: 400; font-size: 12px; }
+    #variableCount { display: inline-block; min-width: 18px; margin-left: 5px; padding: 2px 7px; border-radius: 10px; background: #e5edf3; text-align: center; font-size: 12px; font-weight: 600; }
     .zalo-variable-list {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
         flex-direction: row;
-        padding: 0 12px 12px;
+        padding: 0 14px 14px;
     }
     .zalo-variable-item {
-        background: #f0f4f8;
-        border: 1px solid #d1d5db;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        padding: 4px 10px !important;
+        border-radius: 18px !important;
+        font-size: 13px !important;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        transition: all 0.2s;
+        transition: all 0.15s;
     }
     .zalo-variable-item:hover {
-        border-color: #0068ff;
-        background: #e6f0fa;
+        border-color: #0066a6;
+        background: #f0f9ff;
         transform: translateY(-1px);
     }
-    .zalo-variable-code { color: #0068ff; font-family: monospace; font-weight: 600; }
-    .zalo-variable-desc { color: #555; font-size: 0.8rem; }
+    .zalo-variable-code { color: #0066a6; font-family: monospace; font-weight: 600; font-size: 13px; }
+    .zalo-variable-desc { color: #64748b; font-size: 12px; }
     .zalo-template-actions {
         display: flex;
         align-items: center;
@@ -268,8 +334,8 @@
         height: 38px;
         margin: 0;
         padding: 0 14px;
-        border-radius: 6px;
-        font-size: 14px;
+        border-radius: 4px;
+        font-size: 13.5px;
         font-weight: 600;
         line-height: 36px;
         white-space: nowrap;
@@ -283,123 +349,59 @@
     }
     .zalo-template-actions .zalo-reset-button {
         color: #334155;
-        background: #fff;
+        background: #ffffff;
         border: 1px solid #cbd5e1;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        transition: all 0.15s ease;
     }
-    .zalo-template-actions .zalo-reset-button:hover,
-    .zalo-template-actions .zalo-reset-button:focus {
-        color: #0068ff;
-        background: #f7faff;
-        border-color: #80b4ff;
-    }
-    .zalo-template-actions .zalo-reset-all-button {
-        color: #9f3a38;
-        background: #fffafa;
-        border-color: #efc4c3;
-    }
-    .zalo-template-actions .zalo-reset-all-button:hover,
-    .zalo-template-actions .zalo-reset-all-button:focus {
-        color: #842f2d;
-        background: #fff1f0;
-        border-color: #df9c99;
-    }
-    .zalo-template-actions-primary .submitFormButton {
-        color: #fff;
-        background: #0068ff;
-        border: 1px solid #0068ff;
-        box-shadow: 0 2px 4px rgba(0, 104, 255, 0.2);
-    }
-    .zalo-template-actions-primary .submitFormButton:hover,
-    .zalo-template-actions-primary .submitFormButton:focus {
-        background: #0058d9;
-        border-color: #0058d9;
-    }
-    .zalo-template-actions-primary .cancelButton {
-        color: #475569;
-        background: #fff;
-        border: 1px solid #cbd5e1;
-        text-decoration: none;
-    }
-    .zalo-template-actions-primary .cancelButton:hover,
-    .zalo-template-actions-primary .cancelButton:focus {
-        color: #1e293b;
+    .zalo-template-actions .zalo-reset-button:hover {
         background: #f8fafc;
         border-color: #94a3b8;
-        text-decoration: none;
+    }
+    .zalo-template-actions .zalo-reset-all-button {
+        color: #b91c1c;
+        background: #ffffff;
+        border-color: #fecaca;
+    }
+    .zalo-template-actions .zalo-reset-all-button:hover {
+        background: #fef2f2;
+        border-color: #f87171;
     }
     .zalo-preview-toggle {
-        display: inline-flex;
+        font-size: 13.5px;
+        color: #64748b;
+        cursor: pointer;
+        display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 0.85rem;
-        color: #0068ff;
-        cursor: pointer;
-        font-weight: 500;
-        background: #f0f4f8;
-        padding: 5px 12px;
-        border-radius: 20px;
-        transition: all 0.2s;
-        margin: 0;
+        user-select: none;
     }
-    .zalo-preview-toggle:hover { background: #e6f0fa; }
-    .zalo-preview-toggle input { cursor: pointer; margin: 0; }
     .zalo-preview {
-        background: #e5e7eb;
-        border-radius: 6px;
-        padding: 1.5rem;
         display: none;
-        height: 360px;
-        min-height: 320px;
-        overflow-y: auto;
-        box-sizing: border-box;
+        margin-top: 15px;
+        padding: 18px;
+        background: #eef2f6;
+        border-radius: 8px;
+        border: 1px solid #dce5eb;
     }
-    .zalo-preview.active { display: flex; justify-content: center; }
+    .zalo-preview.active { display: block; }
     .zalo-bubble {
-        background: #fff;
-        border-radius: 12px;
-        padding: 1rem;
-        max-width: 90%;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        font-size: 1.05rem;
-        line-height: 1.65;
-        white-space: pre-wrap;
+        background: #ffffff;
+        border-radius: 8px 8px 8px 0;
+        padding: 14px 16px;
+        max-width: 480px;
+        font-size: 13.5px;
+        line-height: 1.5;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        color: #1e293b;
         position: relative;
-        width: 100%;
-        align-self: flex-start;
+        word-break: break-word;
+        white-space: pre-wrap;
     }
-    .zalo-bubble::before {
-        content: '';
-        position: absolute;
-        bottom: -5px;
-        left: -5px;
-        width: 15px;
-        height: 15px;
-        background: #fff;
-        clip-path: polygon(100% 0, 100% 100%, 0 0);
-        border-radius: 0 0 5px 0;
-    }
-    @media (max-width: 720px) {
-        .zalo-template-actions {
-            align-items: stretch;
-            flex-direction: column;
-        }
-        .zalo-template-actions-secondary,
-        .zalo-template-actions-primary,
-        .zalo-template-actions-primary .formButtons,
-        .zalo-template-actions-primary .form_buttons {
-            width: 100%;
-        }
-        .zalo-template-actions-secondary,
-        .zalo-template-actions-primary .formButtons,
-        .zalo-template-actions-primary .form_buttons {
-            flex-wrap: wrap;
-        }
-        .zalo-template-actions button,
-        .zalo-template-actions input[type="submit"],
-        .zalo-template-actions .cancelButton {
-            flex: 1 1 auto;
-        }
+    @media(max-width: 800px) {
+        .zalo-editor-container { flex-direction: column; }
+        .zalo-sidebar { width: 100%; }
+        .zalo-role-list { flex-direction: row; }
+        .zalo-template-actions { flex-direction: column; align-items: stretch; }
     }
 </style>
 
