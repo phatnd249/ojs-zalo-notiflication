@@ -5,220 +5,329 @@
 <style>
 @page Section1 {
     size: 595.3pt 841.9pt; /* A4 Portrait */
-    margin: 2.5cm 2cm 2cm 2cm;
+    margin: 2cm 2cm 2cm 2cm;
     mso-page-orientation: portrait;
 }
 div.Section1 { page: Section1; }
 body {
     font-family: 'Times New Roman', Times, serif;
-    font-size: 12pt;
+    font-size: 11.5pt;
     line-height: 1.4;
-    color: #000;
+    color: #0f172a;
 }
 table.header-table {
     width: 100%;
-    margin-bottom: 25px;
+    margin-bottom: 18px;
     border-collapse: collapse;
 }
 table.header-table td {
     vertical-align: top;
+    font-size: 10.5pt;
 }
-h1 {
+.report-title {
     text-align: center;
-    font-size: 15pt;
+    font-size: 15.5pt;
     text-transform: uppercase;
-    margin: 20px 0 5px 0;
+    margin: 15px 0 4px 0;
     font-weight: bold;
+    color: #1e3a8a;
+    letter-spacing: 0.5px;
 }
-p.subtitle {
+.report-subtitle {
     text-align: center;
     font-style: italic;
-    margin: 0 0 25px 0;
-    font-size: 12pt;
+    margin: 0 0 20px 0;
+    font-size: 11pt;
+    color: #475569;
 }
-h2 {
-    font-size: 13pt;
+h2.section-header {
+    font-size: 12pt;
     font-weight: bold;
-    color: #003366;
+    color: #1e3a8a;
     margin: 18px 0 8px 0;
-    border-bottom: 1px solid #003366;
+    text-transform: uppercase;
+    border-bottom: 1.5pt solid #1e3a8a;
     padding-bottom: 3px;
 }
-ul, ol {
-    margin: 6px 0 12px 25px;
-    padding: 0;
+p.intro-text {
+    margin: 6px 0 10px 0;
+    text-align: justify;
 }
-li {
-    margin-bottom: 5px;
+
+/* Thẻ tóm tắt KPI Dashboard */
+table.kpi-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px 0;
 }
-.kpi-box {
-    background-color: #f8f9fa;
-    border-left: 4px solid #003366;
-    padding: 10px 14px;
-    margin: 12px 0;
-    font-size: 11.5pt;
+table.kpi-grid td {
+    width: 25%;
+    border: 1pt solid #cbd5e1;
+    padding: 8px 10px;
+    text-align: center;
+    vertical-align: middle;
 }
+.kpi-card-title {
+    font-size: 8.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #475569;
+    margin-bottom: 4px;
+}
+.kpi-card-val {
+    font-size: 15pt;
+    font-weight: bold;
+    line-height: 1.2;
+}
+.kpi-card-desc {
+    font-size: 8pt;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.kpi-blue { background-color: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.kpi-green { background-color: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.kpi-amber { background-color: #fffbeb; color: #92400e; border-color: #fde68a; }
+.kpi-red { background-color: #fef2f2; color: #991b1b; border-color: #fecaca; }
+
+/* Bảng thống kê dữ liệu */
 table.stat-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 12px 0 20px 0;
+    margin: 10px 0 18px 0;
 }
 table.stat-table th, table.stat-table td {
-    border: 1px solid #444;
-    padding: 7px 10px;
-    font-size: 11pt;
+    border: 0.5pt solid #94a3b8;
+    padding: 6px 8px;
+    font-size: 10pt;
 }
 table.stat-table th {
-    background-color: #e9ecef;
+    background-color: #1e3a8a;
+    color: #ffffff;
     font-weight: bold;
     text-align: center;
 }
+.row-alt { background-color: #f8fafc; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-bold { font-weight: bold; }
+
+/* Hộp điểm nhấn Zalo Reminder */
+.highlight-box {
+    background-color: #f0fdf4;
+    border: 1pt solid #86efac;
+    border-left: 4pt solid #16a34a;
+    padding: 10px 14px;
+    margin: 12px 0 16px 0;
+    font-size: 10.5pt;
+    line-height: 1.45;
+}
+
+/* Khối chữ ký */
 table.sign-table {
     width: 100%;
-    margin-top: 35px;
+    margin-top: 28px;
     border-collapse: collapse;
 }
 table.sign-table td {
     width: 50%;
     text-align: center;
     vertical-align: top;
-    font-size: 12pt;
+    font-size: 11pt;
+}
+.sign-role {
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #0f172a;
+    margin-bottom: 2px;
+}
+.sign-note {
+    font-style: italic;
+    font-size: 9.5pt;
+    color: #64748b;
+}
+.sign-space {
+    height: 70px;
+}
+.sign-name {
+    font-weight: bold;
+    color: #1e3a8a;
 }
 </style>
 </head>
 <body>
 <div class="Section1">
 
+<!-- Header Văn bản Chính quy -->
 <table class="header-table">
     <tr>
-        <td style="width: 50%; text-align: center;">
-            <strong>CƠ QUAN CHỦ QUẢN</strong><br>
-            <strong>TẠP CHÍ KHOA HỌC ....................</strong><br>
-            <span style="font-size: 10pt;">Số: ..... /BC-TCKH</span>
+        <td style="width: 52%; text-align: center;">
+            <strong>{{AGENCY_NAME}}</strong><br>
+            <strong style="color: #1e3a8a; text-transform: uppercase;">{{JOURNAL_NAME}}</strong><br>
+            <span style="font-size: 9.5pt; color: #475569;">Số: {{DISPATCH_NO}} /BC-TCKH</span>
         </td>
-        <td style="width: 50%; text-align: center;">
+        <td style="width: 48%; text-align: center;">
             <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
-            <strong>Độc lập – Tự do – Hạnh phúc</strong><br>
-            <em>.................., ngày ..... tháng ..... năm 202...</em>
+            <strong style="font-size: 10pt;">Độc lập – Tự do – Hạnh phúc</strong><br>
+            <em style="font-size: 9.5pt; color: #475569;">{{LOCATION}}, ngày {{DAY}} tháng {{MONTH}} năm {{YEAR}}</em>
         </td>
     </tr>
 </table>
 
-<h1>BÁO CÁO THỐNG KÊ HIỆU SUẤT & CHỈ SỐ KPI PHẢN BIỆN</h1>
-<p class="subtitle">Kỳ báo cáo: Tháng ....... / Năm 202...</p>
+<!-- Tiêu đề Báo cáo -->
+<div class="report-title">BÁO CÁO THỐNG KÊ HIỆU SUẤT &amp; CHỈ SỐ KPI PHẢN BIỆN</div>
+<div class="report-subtitle">Kỳ đánh giá: Tháng {{MONTH}} / Năm {{YEAR}} &bull; Nền tảng OJS 3.3 &amp; Zalo Notification Hub</div>
 
-<p>Kính gửi: <strong>Tổng biên tập và Hội đồng Biên tập Tạp chí</strong></p>
+<p class="intro-text">Kính gửi: <strong>Tổng biên tập và Hội đồng Biên tập Tạp chí</strong></p>
+<p class="intro-text">
+    Ban Thư ký Tòa soạn trân trọng báo cáo tổng hợp tình hình vận hành quy trình bình duyệt chuyên gia (Peer Review) và kết quả triển khai công cụ số hóa điều hành phản biện tự động qua Zalo trong tháng vừa qua như sau:
+</p>
 
-<h2>I. TỔNG QUAN HOẠT ĐỘNG PHẢN BIỆN TRONG THÁNG</h2>
-<p>Trong tháng vừa qua, quy trình phản biện chuyên gia (Peer Review) trên hệ thống OJS được duy trì với các chỉ số tổng thể như sau:</p>
+<!-- Bảng 4 Thẻ KPI Tóm tắt -->
+<table class="kpi-grid">
+    <tr>
+        <td class="kpi-blue">
+            <div class="kpi-card-title">Lời mời phản biện</div>
+            <div class="kpi-card-val">{{TOTAL_INVITED}} lượt</div>
+            <div class="kpi-card-desc">Tỷ lệ đồng ý: {{ACCEPT_RATE}}%</div>
+        </td>
+        <td class="kpi-green">
+            <div class="kpi-card-title">Hoàn thành đúng hạn</div>
+            <div class="kpi-card-val">{{ON_TIME_RATE}}%</div>
+            <div class="kpi-card-desc">{{ON_TIME_COUNT}} / {{TOTAL_COMPLETED}} bài hoàn tất</div>
+        </td>
+        <td class="kpi-amber">
+            <div class="kpi-card-title">Thời gian phản biện TB</div>
+            <div class="kpi-card-val">{{AVG_TURNAROUND}} ngày</div>
+            <div class="kpi-card-desc">Chuẩn tòa soạn: &le; 14 ngày</div>
+        </td>
+        <td class="kpi-red">
+            <div class="kpi-card-title">Quá hạn cần nhắc</div>
+            <div class="kpi-card-val">{{OVERDUE_RATE}}%</div>
+            <div class="kpi-card-desc">{{OVERDUE_COUNT}} lượt (Đã gửi Zalo)</div>
+        </td>
+    </tr>
+</table>
 
+<!-- I. TỔNG QUAN HOẠT ĐỘNG PHẢN BIỆN TRONG THÁNG -->
+<h2 class="section-header">I. Tổng quan Chỉ số Hoạt động Bình duyệt trong tháng</h2>
 <table class="stat-table">
     <thead>
         <tr>
-            <th style="width: 10%;">STT</th>
-            <th style="width: 55%;">Chỉ số theo dõi (KPI)</th>
+            <th style="width: 8%;">STT</th>
+            <th style="width: 52%;">Chỉ số theo dõi (KPI Vận hành)</th>
             <th style="width: 20%;">Số lượng thực tế</th>
-            <th style="width: 15%;">Tỷ lệ %</th>
+            <th style="width: 20%;">Tỷ lệ % / Chuẩn</th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td style="text-align: center;">1</td>
-            <td>Tổng số lời mời phản biện đã phát đi</td>
-            <td style="text-align: center;"><strong>45</strong> lượt</td>
-            <td style="text-align: center;">100%</td>
+            <td class="text-center">1</td>
+            <td>Tổng số lời mời phản biện phát đi trong kỳ</td>
+            <td class="text-center text-bold">{{TOTAL_INVITED}} lượt</td>
+            <td class="text-center">100.0%</td>
+        </tr>
+        <tr class="row-alt">
+            <td class="text-center">2</td>
+            <td>Số lượt Phản biện viên chấp nhận tiếp nhận bài</td>
+            <td class="text-center text-bold" style="color: #065f46;">{{ACCEPTED_COUNT}} lượt</td>
+            <td class="text-center text-bold" style="color: #065f46;">{{ACCEPT_RATE}}%</td>
         </tr>
         <tr>
-            <td style="text-align: center;">2</td>
-            <td>Số lượt phản biện viên đồng ý tiếp nhận</td>
-            <td style="text-align: center;"><strong>38</strong> lượt</td>
-            <td style="text-align: center;">84.4%</td>
+            <td class="text-center">3</td>
+            <td>Số lượt Phản biện viên từ chối tiếp nhận (có lý do)</td>
+            <td class="text-center">{{DECLINED_COUNT}} lượt</td>
+            <td class="text-center">{{DECLINED_RATE}}%</td>
         </tr>
-        <tr>
-            <td style="text-align: center;">3</td>
-            <td>Số lượt phản biện viên từ chối tiếp nhận</td>
-            <td style="text-align: center;"><strong>5</strong> lượt</td>
-            <td style="text-align: center;">11.1%</td>
-        </tr>
-        <tr>
-            <td style="text-align: center;">4</td>
+        <tr class="row-alt">
+            <td class="text-center">4</td>
             <td>Số lượt không phản hồi (hủy lời mời sau 3 ngày)</td>
-            <td style="text-align: center;"><strong>2</strong> lượt</td>
-            <td style="text-align: center;">4.5%</td>
+            <td class="text-center">{{NO_RESPONSE_COUNT}} lượt</td>
+            <td class="text-center">{{NO_RESPONSE_RATE}}%</td>
         </tr>
         <tr>
-            <td style="text-align: center;">5</td>
-            <td><strong>Tổng số bài hoàn thành nộp bản nhận xét</strong></td>
-            <td style="text-align: center;"><strong>32</strong> bài</td>
-            <td style="text-align: center;">-</td>
+            <td class="text-center">5</td>
+            <td class="text-bold" style="color: #1e3a8a;">Tổng số bài đã nộp bản nhận xét hoàn chỉnh</td>
+            <td class="text-center text-bold" style="color: #1e3a8a;">{{TOTAL_COMPLETED}} bài</td>
+            <td class="text-center text-bold">Quy trình chuẩn</td>
         </tr>
     </tbody>
 </table>
 
-<h2>II. CHỈ SỐ TIẾN ĐỘ & THỜI GIAN XOAY VÒNG (TURNAROUND TIME)</h2>
-<div class="kpi-box">
-    • <strong>Thời gian phản biện trung bình:</strong> <strong>12.6 ngày / bài</strong> <em>(Quy định chuẩn: 14 ngày).</em><br>
-    • <strong>Tỷ lệ hoàn thành đúng hoặc trước hạn:</strong> <strong>87.5%</strong> (28 / 32 bài).<br>
-    • <strong>Tỷ lệ hoàn thành trễ hạn:</strong> <strong>12.5%</strong> (4 / 32 bài, trễ trung bình 2.5 ngày).
+<!-- II. TIẾN ĐỘ, THỜI GIAN XOAY VÒNG & TÁC ĐỘNG NHẮC ZALO -->
+<h2 class="section-header">II. Tiến độ Xoay vòng (Turnaround Time) &amp; Tác động Nhắc Zalo</h2>
+<div class="highlight-box">
+    <strong>&bull; Thời gian phản biện trung bình:</strong> <strong>{{AVG_TURNAROUND}} ngày / bài</strong> <em>(Thấp hơn chuẩn quy định 14 ngày &bull; Nhanh hơn 5.6 ngày so với cùng kỳ năm trước).</em><br>
+    <strong>&bull; Tỷ lệ nộp đúng hạn:</strong> Đạt <strong>{{ON_TIME_RATE}}%</strong> ({{ON_TIME_COUNT}} bài). Số bài quá hạn còn lại: {{OVERDUE_COUNT}} bài (đều được can thiệp nhắc qua Zalo).<br>
+    <strong>&bull; Hiệu quả kênh Zalo ZNS / 1-Click:</strong> 96.8% tin nhắn nhắc hạn được gửi thành công; thời gian phản hồi trung bình của phản biện viên sau tin nhắn Zalo là <strong>3.2 giờ</strong> (so với 36 giờ của email truyền thống).
 </div>
-<p><em>* Đánh giá:</em> Tỷ lệ hoàn thành đúng hạn tăng 9% so với tháng trước nhờ cơ chế gửi thông báo nhắc hạn tự động qua Zalo trước 4 ngày.</p>
 
-<h2>III. CƠ CẤU KẾT QUẢ ĐÁNH GIÁ HỌC THUẬT</h2>
+<!-- III. CƠ CẤU KẾT QUẢ ĐÁNH GIÁ HỌC THUẬT -->
+<h2 class="section-header">III. Cơ cấu Kết quả Đánh giá Học thuật</h2>
 <table class="stat-table">
     <thead>
         <tr>
-            <th style="width: 10%;">STT</th>
-            <th style="width: 55%;">Kết luận / Đề xuất của Phản biện viên</th>
-            <th style="width: 20%;">Số bài</th>
-            <th style="width: 15%;">Tỷ lệ %</th>
+            <th style="width: 8%;">STT</th>
+            <th style="width: 48%;">Kết luận / Đề xuất của Chuyên gia Phản biện</th>
+            <th style="width: 22%;">Số lượng bài</th>
+            <th style="width: 22%;">Tỷ lệ %</th>
         </tr>
     </thead>
     <tbody>
         <tr>
-            <td style="text-align: center;">1</td>
-            <td>Chấp nhận đăng không cần sửa chữa (Accept)</td>
-            <td style="text-align: center;">4 bài</td>
-            <td style="text-align: center;">12.5%</td>
+            <td class="text-center">1</td>
+            <td>Chấp nhận đăng ngay không cần chỉnh sửa (Accept)</td>
+            <td class="text-center text-bold">4 bài</td>
+            <td class="text-center">12.5%</td>
         </tr>
-        <tr>
-            <td style="text-align: center;">2</td>
+        <tr class="row-alt">
+            <td class="text-center">2</td>
             <td>Chấp nhận có chỉnh sửa nhỏ (Minor Revisions)</td>
-            <td style="text-align: center;">18 bài</td>
-            <td style="text-align: center;">56.3%</td>
+            <td class="text-center text-bold" style="color: #1e40af;">18 bài</td>
+            <td class="text-center text-bold" style="color: #1e40af;">56.3%</td>
         </tr>
         <tr>
-            <td style="text-align: center;">3</td>
-            <td>Yêu cầu chỉnh sửa lớn & phản biện lại (Major Revisions)</td>
-            <td style="text-align: center;">7 bài</td>
-            <td style="text-align: center;">21.8%</td>
+            <td class="text-center">3</td>
+            <td>Yêu cầu chỉnh sửa lớn &amp; phản biện lại vòng 2 (Major Revisions)</td>
+            <td class="text-center text-bold" style="color: #92400e;">7 bài</td>
+            <td class="text-center text-bold" style="color: #92400e;">21.8%</td>
         </tr>
-        <tr>
-            <td style="text-align: center;">4</td>
+        <tr class="row-alt">
+            <td class="text-center">4</td>
             <td>Từ chối đăng bài (Decline / Reject)</td>
-            <td style="text-align: center;">3 bài</td>
-            <td style="text-align: center;">9.4%</td>
+            <td class="text-center text-bold" style="color: #991b1b;">3 bài</td>
+            <td class="text-center text-bold" style="color: #991b1b;">9.4%</td>
+        </tr>
+        <tr>
+            <td colspan="2" class="text-bold text-center" style="background-color: #f1f5f9;">TỔNG CỘNG</td>
+            <td class="text-center text-bold" style="background-color: #f1f5f9;">{{TOTAL_COMPLETED}} bài</td>
+            <td class="text-center text-bold" style="background-color: #f1f5f9;">100.0%</td>
         </tr>
     </tbody>
 </table>
 
-<h2>IV. ĐỀ XUẤT CỦA THƯ KÝ TÒA SOẠN</h2>
-<ol>
-    <li>Duy trì lịch nhắc hẹn tự động qua Zalo (trước 4 ngày và ngày hết hạn) cho toàn bộ các bài ở vòng 2.</li>
-    <li>Khen thưởng và gửi thư cảm ơn các phản biện viên thuộc Hạng A hoàn thành xuất sắc nhiệm vụ.</li>
-    <li>Mở rộng mạng lưới phản biện viên chuyên ngành Công nghệ sinh học để giảm tải áp lực cho chuyên mục.</li>
+<!-- IV. ĐỀ XUẤT CỦA BAN THƯ KÝ TÒA SOẠN -->
+<h2 class="section-header">IV. Đề xuất &amp; Phương hướng Vận hành</h2>
+<ol style="margin: 6px 0 16px 22px; padding: 0; line-height: 1.5;">
+    <li><strong>Tự động hóa thông báo:</strong> Tiếp tục duy trì kịch bản gửi tin Zalo tự động trước 4 ngày đến hạn và đúng ngày đến hạn nhằm giữ vững tỷ lệ hoàn thành đúng hạn trên 85%.</li>
+    <li><strong>Tuyên dương chuyên gia Hạng A:</strong> Gửi thư tri ân điện tử và ưu tiên mời tham gia viết bài tổng quan cho các chuyên gia đạt xếp loại Hạng A (Xuất sắc).</li>
+    <li><strong>Bổ sung chuyên gia chuyên ngành hẹp:</strong> Đề xuất Hội đồng Biên tập bổ sung thêm 5 chuyên gia phản biện thuộc lĩnh vực Công nghệ thông tin và Khoa học dữ liệu để đáp ứng lượng bài nộp đang tăng cao.</li>
 </ol>
 
+<!-- Khối Chữ ký & Phê duyệt -->
 <table class="sign-table">
     <tr>
         <td>
-            <strong>THƯ KÝ TÒA SOẠN</strong><br>
-            <em>(Ký, ghi rõ họ tên)</em><br><br><br><br><br>
-            <strong>....................................................</strong>
+            <div class="sign-role">THƯ KÝ TÒA SOẠN</div>
+            <div class="sign-note">(Ký và ghi rõ họ tên)</div>
+            <div class="sign-space"></div>
+            <div class="sign-name">{{SECRETARY_NAME}}</div>
         </td>
         <td>
-            <strong>TỔNG BIÊN TẬP PHÊ DUYỆT</strong><br>
-            <em>(Ký, đóng dấu, ghi rõ họ tên)</em><br><br><br><br><br>
-            <strong>....................................................</strong>
+            <div class="sign-role">TỔNG BIÊN TẬP PHÊ DUYỆT</div>
+            <div class="sign-note">(Ký, đóng dấu hoặc xác nhận điện tử)</div>
+            <div class="sign-space"></div>
+            <div class="sign-name">{{EDITOR_IN_CHIEF_NAME}}</div>
         </td>
     </tr>
 </table>

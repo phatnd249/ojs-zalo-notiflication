@@ -66,7 +66,37 @@ if (strpos($ratingExcel, 'rank-a') === false || strpos($ratingExcel, 'rank-b') =
     failExcelTest('Thiếu class định kiểu CSS phân hạng phản biện viên.');
 }
 
-// 3. Kiểm tra mã nguồn ZaloReviewReminderController về việc đổi tên file và hỗ trợ xls
+if (strpos($ratingExcel, 'HẠNG A &bull; XUẤT SẮC (5★)') === false) {
+    failExcelTest('Thiếu khung tiêu chí 4 cấp trong bảng xếp loại PBV Excel.');
+}
+
+// 3. Kiểm tra xuất Báo cáo KPI Hiệu suất (Excel)
+$kpiExcel = ZaloExcelReportService::generateKpiReportExcel(0);
+
+if (empty($kpiExcel)) {
+    failExcelTest('generateKpiReportExcel trả về nội dung rỗng.');
+}
+
+if (strpos($kpiExcel, 'BÁO CÁO THỐNG KÊ HIỆU SUẤT &amp; CHỈ SỐ KPI PHẢN BIỆN') === false) {
+    failExcelTest('Thiếu tiêu đề Báo cáo KPI trong file Excel.');
+}
+
+if (strpos($kpiExcel, 'LỜI MỜI PHẢN BIỆN') === false || strpos($kpiExcel, 'THỜI GIAN PB TRUNG BÌNH') === false) {
+    failExcelTest('Thiếu các thẻ KPI hiệu suất trong file Excel.');
+}
+
+// 4. Kiểm tra các mẫu Word (.doc) đã được thiết kế lại
+$docKpi = file_get_contents(dirname(__DIR__) . '/reports/Mau_2_Bao_cao_hieu_suat_KPI_phan_bien.doc');
+if (strpos($docKpi, 'kpi-grid') === false || strpos($docKpi, 'highlight-box') === false) {
+    failExcelTest('Mẫu Word KPI Mau_2 chưa có thiết kế thẻ kpi-grid và highlight-box.');
+}
+
+$docRating = file_get_contents(dirname(__DIR__) . '/reports/Mau_3_Danh_gia_xep_loai_phan_bien_vien.doc');
+if (strpos($docRating, 'criteria-grid') === false || strpos($docRating, 'crit-a') === false) {
+    failExcelTest('Mẫu Word Xếp loại Mau_3 chưa có thiết kế khung criteria-grid 4 cấp.');
+}
+
+// 5. Kiểm tra mã nguồn ZaloReviewReminderController về việc đổi tên file và hỗ trợ xls
 $controllerSource = file_get_contents(dirname(__DIR__) . '/controllers/ZaloReviewReminderController.inc.php');
 
 if (strpos($controllerSource, "Bao_cao_tien_do_phan_bien_' . \$dateStr . '.xls'") === false) {
@@ -93,3 +123,4 @@ if (strpos($tabSource, 'fa-file-excel-o') === false) {
 }
 
 echo "Excel Report Export tests passed.\n";
+

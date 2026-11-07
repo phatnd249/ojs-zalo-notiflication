@@ -5,185 +5,294 @@
 <style>
 @page Section1 {
     size: 841.9pt 595.3pt; /* A4 Landscape */
-    margin: 2cm 1.5cm 2cm 1.5cm;
+    margin: 1.8cm 1.5cm 1.8cm 1.5cm;
     mso-page-orientation: landscape;
 }
 div.Section1 { page: Section1; }
 body {
     font-family: 'Times New Roman', Times, serif;
     font-size: 11pt;
-    line-height: 1.3;
-    color: #000;
+    line-height: 1.35;
+    color: #0f172a;
 }
 table.header-table {
     width: 100%;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
     border-collapse: collapse;
 }
 table.header-table td {
     vertical-align: top;
+    font-size: 10pt;
 }
-h2 {
+.report-title {
     text-align: center;
     font-size: 15pt;
     text-transform: uppercase;
-    margin: 15px 0 5px 0;
+    margin: 10px 0 3px 0;
     font-weight: bold;
+    color: #1e3a8a;
+    letter-spacing: 0.5px;
 }
-p.subtitle {
+.report-subtitle {
     text-align: center;
     font-style: italic;
-    margin: 0 0 15px 0;
-    font-size: 11pt;
+    margin: 0 0 14px 0;
+    font-size: 10.5pt;
+    color: #475569;
 }
-.criteria-box {
-    background-color: #f8f9fa;
-    border: 1px solid #ddd;
-    padding: 8px 12px;
-    margin-bottom: 15px;
-    font-size: 9.5pt;
+
+/* Khung 4 Cấp tiêu chí xếp hạng */
+table.criteria-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+}
+table.criteria-grid td {
+    width: 25%;
+    border: 1pt solid #cbd5e1;
+    padding: 6px 10px;
+    vertical-align: top;
+    font-size: 9pt;
     line-height: 1.35;
 }
+.crit-title {
+    font-size: 9.5pt;
+    font-weight: bold;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+
+.crit-a { background-color: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.crit-b { background-color: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+.crit-c { background-color: #fffbeb; border-color: #fde68a; color: #92400e; }
+.crit-d { background-color: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+/* Bảng dữ liệu chính */
 table.data-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
 }
 table.data-table th, table.data-table td {
-    border: 1px solid #333;
-    padding: 6px 8px;
+    border: 0.5pt solid #94a3b8;
+    padding: 6px 7px;
     font-size: 9.5pt;
+    vertical-align: middle;
 }
 table.data-table th {
-    background-color: #f2f2f2;
+    background-color: #1e3a8a;
+    color: #ffffff;
     font-weight: bold;
     text-align: center;
+    height: 32px;
 }
+.row-alt { background-color: #f8fafc; }
 .text-center { text-align: center; }
-.rank-a { color: #007700; font-weight: bold; }
-.rank-b { color: #0055aa; font-weight: bold; }
-.rank-c { color: #bb7700; font-weight: bold; }
-.rank-d { color: #cc0000; font-weight: bold; }
+.text-bold { font-weight: bold; }
+
+/* Huy hiệu xếp loại */
+.badge-rank-a {
+    background-color: #d1fae5;
+    color: #065f46;
+    font-weight: bold;
+    padding: 3px 6px;
+    border: 0.5pt solid #6ee7b7;
+}
+.badge-rank-b {
+    background-color: #dbeafe;
+    color: #1e40af;
+    font-weight: bold;
+    padding: 3px 6px;
+    border: 0.5pt solid #93c5fd;
+}
+.badge-rank-c {
+    background-color: #fef3c7;
+    color: #92400e;
+    font-weight: bold;
+    padding: 3px 6px;
+    border: 0.5pt solid #fcd34d;
+}
+.badge-rank-d {
+    background-color: #fee2e2;
+    color: #991b1b;
+    font-weight: bold;
+    padding: 3px 6px;
+    border: 0.5pt solid #fca5a5;
+}
+
+/* Chữ ký */
 table.sign-table {
     width: 100%;
-    margin-top: 25px;
+    margin-top: 22px;
     border-collapse: collapse;
 }
 table.sign-table td {
     width: 50%;
     text-align: center;
     vertical-align: top;
-    font-size: 11pt;
+    font-size: 10.5pt;
+}
+.sign-role {
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #0f172a;
+    margin-bottom: 2px;
+}
+.sign-note {
+    font-style: italic;
+    font-size: 9pt;
+    color: #64748b;
+}
+.sign-space {
+    height: 60px;
+}
+.sign-name {
+    font-weight: bold;
+    color: #1e3a8a;
 }
 </style>
 </head>
 <body>
 <div class="Section1">
 
+<!-- Header Văn bản Chính quy -->
 <table class="header-table">
     <tr>
         <td style="width: 55%; text-align: center;">
-            <strong>CƠ QUAN CHỦ QUẢN</strong><br>
-            <strong>TẠP CHÍ KHOA HỌC ....................</strong><br>
-            <span style="font-size: 9pt;">Số: ..... /BC-TCKH</span>
+            <strong>{{AGENCY_NAME}}</strong><br>
+            <strong style="color: #1e3a8a; text-transform: uppercase;">{{JOURNAL_NAME}}</strong><br>
+            <span style="font-size: 9pt; color: #475569;">Số: {{DISPATCH_NO}} /BC-TCKH</span>
         </td>
         <td style="width: 45%; text-align: center;">
             <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong><br>
-            <strong>Độc lập – Tự do – Hạnh phúc</strong><br>
-            <em>.................., ngày ..... tháng ..... năm 202...</em>
+            <strong style="font-size: 9.5pt;">Độc lập – Tự do – Hạnh phúc</strong><br>
+            <em style="font-size: 9pt; color: #475569;">{{LOCATION}}, ngày {{DAY}} tháng {{MONTH}} năm {{YEAR}}</em>
         </td>
     </tr>
 </table>
 
-<h2>BẢNG ĐÁNH GIÁ CHẤT LƯỢNG & PHÂN LOẠI PHẢN BIỆN VIÊN</h2>
-<p class="subtitle">Kỳ đánh giá: Tháng ....... / Năm 202...</p>
+<!-- Tiêu đề Báo cáo -->
+<div class="report-title">BẢNG ĐÁNH GIÁ CHẤT LƯỢNG &amp; PHÂN LOẠI XẾP HẠNG PHẢN BIỆN VIÊN</div>
+<div class="report-subtitle">Kỳ đánh giá học thuật: Tháng {{MONTH}} / Năm {{YEAR}} &bull; Hội đồng Biên tập Tạp chí</div>
 
-<div class="criteria-box">
-    <strong>* Tiêu chí chấm điểm của Biên tập viên (1 - 5 sao):</strong><br>
-    • <strong>5★ (Xuất sắc):</strong> Nhận xét sâu sắc, chỉ rõ sai sót phương pháp luận, văn phong xây dựng, gợi ý tài liệu.<br>
-    • <strong>4★ (Tốt):</strong> Đánh giá đúng trọng tâm khoa học, định hướng chỉnh sửa bài cụ thể.<br>
-    • <strong>3★ (Đạt yêu cầu):</strong> Nhận xét đúng nhưng ngắn gọn, chủ yếu tập trung lỗi trình bày/kỹ thuật.<br>
-    • <strong>1–2★ (Không đạt):</strong> Nhận xét qua loa (vài dòng), thiếu căn cứ học thuật hoặc trễ hạn nghiêm trọng.
-</div>
+<!-- Khung Tiêu chí Phân hạng Chuẩn hóa -->
+<table class="criteria-grid">
+    <tr>
+        <td class="crit-a">
+            <div class="crit-title">Hạng A &bull; Xuất sắc (5★)</div>
+            Nhận xét sâu sắc, chỉ rõ sai sót phương pháp luận, gợi ý 2-3 tài liệu giá trị; nộp đúng hoặc sớm hạn.<br>
+            <strong>Định hướng:</strong> Ưu tiên bài trọng điểm, đề xuất Hội đồng Biên tập.
+        </td>
+        <td class="crit-b">
+            <div class="crit-title">Hạng B &bull; Tốt (4★)</div>
+            Đánh giá đúng trọng tâm khoa học, nhận xét chặt chẽ về dữ liệu mẫu và lập luận; nộp trễ &le; 2 ngày.<br>
+            <strong>Định hướng:</strong> Tiếp tục phân công bài cộng tác thường xuyên.
+        </td>
+        <td class="crit-c">
+            <div class="crit-title">Hạng C &bull; Đạt (3★)</div>
+            Nhận xét cơ bản, chủ yếu góp ý lỗi định dạng, văn phong, trích dẫn; nộp trễ 3-5 ngày.<br>
+            <strong>Định hướng:</strong> Chỉ phân công cho các bài thuộc phạm vi tổng quan.
+        </td>
+        <td class="crit-d">
+            <div class="crit-title">Hạng D &bull; Chưa đạt (1-2★)</div>
+            Nhận xét qua loa (dưới 4 dòng), thiếu cơ sở học thuật hoặc trễ hạn trên 7 ngày.<br>
+            <strong>Định hướng:</strong> Tạm dừng phân công phản biện trong 6 tháng.
+        </td>
+    </tr>
+</table>
 
+<!-- Bảng Danh sách Chi tiết -->
 <table class="data-table">
     <thead>
         <tr>
             <th style="width: 4%;">STT</th>
-            <th style="width: 16%;">Họ và tên Phản biện viên</th>
-            <th style="width: 15%;">Đơn vị & Chuyên ngành</th>
+            <th style="width: 17%;">Họ và tên Chuyên gia PBV</th>
+            <th style="width: 16%;">Đơn vị &amp; Chuyên ngành</th>
             <th style="width: 8%;">Mã bài</th>
-            <th style="width: 8%;">Điểm BTV</th>
-            <th style="width: 25%;">Nhận xét của Biên tập viên phụ trách</th>
-            <th style="width: 10%;">Xếp loại</th>
-            <th style="width: 14%;">Đề xuất của Ban Biên tập</th>
+            <th style="width: 9%;">Ngày nộp</th>
+            <th style="width: 9%;">Điểm BTV</th>
+            <th style="width: 23%;">Nhận xét của Biên tập viên phụ trách</th>
+            <th style="width: 14%;">Xếp loại PBV</th>
         </tr>
     </thead>
     <tbody>
         <tr>
             <td class="text-center">1</td>
-            <td><strong>PGS. TS. Nguyễn Văn A</strong></td>
-            <td>ĐH Sư phạm Hà Nội<br><small style="color:#666;">Trí tuệ nhân tạo & KHMT</small></td>
-            <td class="text-center">#1042</td>
-            <td class="text-center" style="color:#d97706; font-weight:bold;">5★</td>
+            <td><strong>PGS. TS. Nguyễn Văn A</strong><br><small style="color: #475569;">Giảng viên cao cấp</small></td>
+            <td>ĐH Sư phạm Hà Nội<br><small style="color: #64748b;">Trí tuệ nhân tạo &amp; KHMT</small></td>
+            <td class="text-center text-bold" style="color: #1e3a8a;">#1042</td>
+            <td class="text-center">18/10/2026</td>
+            <td class="text-center" style="color: #d97706; font-weight: bold;">5/5 &bull; ★★★★★</td>
             <td>Nhận xét cực kỳ chuyên sâu; chỉ ra lỗ hổng thuật toán và gợi ý thêm 3 tài liệu tham khảo giá trị cho tác giả.</td>
-            <td class="text-center rank-a">Hạng A<br><small>(Xuất sắc)</small></td>
-            <td>Ưu tiên mời tiếp các bài trọng điểm; Đề xuất mời tham gia HĐBT.</td>
+            <td class="text-center"><span class="badge-rank-a">Hạng A (Xuất sắc)</span></td>
         </tr>
-        <tr>
+        <tr class="row-alt">
             <td class="text-center">2</td>
-            <td><strong>TS. Trần Thị B</strong></td>
-            <td>Viện Kinh tế Việt Nam<br><small style="color:#666;">Kinh tế lượng & Thống kê</small></td>
-            <td class="text-center">#1055</td>
-            <td class="text-center" style="color:#d97706; font-weight:bold;">4★</td>
-            <td>Đánh giá mô hình kinh tế lượng chuẩn xác; phản biện chặt chẽ phần dữ liệu mẫu.</td>
-            <td class="text-center rank-b">Hạng B<br><small>(Tốt)</small></td>
-            <td>Tiếp tục cộng tác thường xuyên.</td>
+            <td><strong>TS. Trần Thị B</strong><br><small style="color: #475569;">Nghiên cứu viên chính</small></td>
+            <td>Viện Nghiên cứu Kinh tế<br><small style="color: #64748b;">Kinh tế lượng &amp; Thống kê</small></td>
+            <td class="text-center text-bold" style="color: #1e3a8a;">#1055</td>
+            <td class="text-center">18/10/2026</td>
+            <td class="text-center" style="color: #d97706; font-weight: bold;">4/5 &bull; ★★★★☆</td>
+            <td>Đánh giá mô hình kinh tế lượng chuẩn xác; phản biện chặt chẽ phần dữ liệu mẫu thực nghiệm.</td>
+            <td class="text-center"><span class="badge-rank-b">Hạng B (Tốt)</span></td>
         </tr>
         <tr>
             <td class="text-center">3</td>
-            <td><strong>ThS. Lê Văn C</strong></td>
-            <td>ĐH Kinh tế Quốc dân<br><small style="color:#666;">Quản trị kinh doanh</small></td>
-            <td class="text-center">#1060</td>
-            <td class="text-center" style="color:#d97706; font-weight:bold;">3★</td>
-            <td>Nhận xét đúng hướng nhưng còn ngắn, chủ yếu tập trung vào lỗi định dạng văn bản.</td>
-            <td class="text-center rank-c">Hạng C<br><small>(Đạt)</small></td>
-            <td>Chỉ mời cho các bài thuộc phạm vi tổng quan.</td>
+            <td><strong>ThS. Lê Văn C</strong><br><small style="color: #475569;">Giảng viên</small></td>
+            <td>Đại học Kinh tế Quốc dân<br><small style="color: #64748b;">Quản trị kinh doanh &amp; TMĐT</small></td>
+            <td class="text-center text-bold" style="color: #1e3a8a;">#1060</td>
+            <td class="text-center">25/10/2026</td>
+            <td class="text-center" style="color: #d97706; font-weight: bold;">3/5 &bull; ★★★☆☆</td>
+            <td>Nhận xét đúng hướng nhưng còn ngắn, chủ yếu tập trung vào lỗi định dạng văn bản và bảng biểu.</td>
+            <td class="text-center"><span class="badge-rank-c">Hạng C (Đạt)</span></td>
         </tr>
-        <tr>
+        <tr class="row-alt">
             <td class="text-center">4</td>
-            <td><strong>PGS. TS. Phạm Hoàng D</strong></td>
-            <td>ĐH Cần Thơ<br><small style="color:#666;">Khoa học Môi trường</small></td>
-            <td class="text-center">#1068</td>
-            <td class="text-center" style="color:#d97706; font-weight:bold;">5★</td>
-            <td>Đọc phản biện cẩn trọng, kiểm chứng từng bảng số liệu khí tượng.</td>
-            <td class="text-center rank-a">Hạng A<br><small>(Xuất sắc)</small></td>
-            <td>Ưu tiên phân công bài chuyên ngành môi trường.</td>
+            <td><strong>PGS. TS. Phạm Hoàng D</strong><br><small style="color: #475569;">Trưởng bộ môn</small></td>
+            <td>Đại học Cần Thơ<br><small style="color: #64748b;">Khoa học Môi trường &amp; ĐBSCL</small></td>
+            <td class="text-center text-bold" style="color: #1e3a8a;">#1068</td>
+            <td class="text-center">28/10/2026</td>
+            <td class="text-center" style="color: #d97706; font-weight: bold;">5/5 &bull; ★★★★★</td>
+            <td>Đọc phản biện cẩn trọng, kiểm chứng từng bảng số liệu khí tượng thủy văn, văn phong phản biện tính xây dựng cao.</td>
+            <td class="text-center"><span class="badge-rank-a">Hạng A (Xuất sắc)</span></td>
         </tr>
         <tr>
             <td class="text-center">5</td>
-            <td><strong>TS. Hoàng Đình D</strong></td>
-            <td>ĐH Đà Nẵng<br><small style="color:#666;">Kỹ thuật Môi trường</small></td>
-            <td class="text-center">#1072</td>
-            <td class="text-center" style="color:#cc0000; font-weight:bold;">2★</td>
-            <td>Nộp trễ 8 ngày; nhận xét chỉ vỏn vẹn 3 dòng chung chung, không đủ cơ sở để tác giả sửa bài.</td>
-            <td class="text-center rank-d">Hạng D<br><small>(Không đạt)</small></td>
-            <td>Tạm dừng phân công trong 6 tháng tới.</td>
+            <td><strong>TS. Vũ Minh E</strong><br><small style="color: #475569;">Phó Trưởng khoa</small></td>
+            <td>Đại học Huế<br><small style="color: #64748b;">Du lịch &amp; Quản lý Di sản</small></td>
+            <td class="text-center text-bold" style="color: #1e3a8a;">#1075</td>
+            <td class="text-center">30/10/2026</td>
+            <td class="text-center" style="color: #d97706; font-weight: bold;">4/5 &bull; ★★★★☆</td>
+            <td>Góp ý xác đáng về tính khả thi của mô hình du lịch sinh thái; hướng dẫn tác giả bổ sung thêm tài liệu cập nhật 2025.</td>
+            <td class="text-center"><span class="badge-rank-b">Hạng B (Tốt)</span></td>
+        </tr>
+        <tr class="row-alt">
+            <td class="text-center">6</td>
+            <td><strong>TS. Hoàng Đình D</strong><br><small style="color: #475569;">Giảng viên</small></td>
+            <td>Đại học Đà Nẵng<br><small style="color: #64748b;">Kỹ thuật Môi trường đô thị</small></td>
+            <td class="text-center text-bold" style="color: #1e3a8a;">#1072</td>
+            <td class="text-center">29/10/2026</td>
+            <td class="text-center" style="color: #dc2626; font-weight: bold;">2/5 &bull; ★★☆☆☆</td>
+            <td>Nộp trễ 8 ngày; bản nhận xét chỉ có 3 dòng chung chung, không đủ căn cứ để tác giả sửa bài.</td>
+            <td class="text-center"><span class="badge-rank-d">Hạng D (Không đạt)</span></td>
         </tr>
     </tbody>
 </table>
 
+<!-- Khối Chữ ký & Phê duyệt -->
 <table class="sign-table">
     <tr>
         <td>
-            <strong>NGƯỜI LẬP BÁO CÁO</strong><br>
-            <em>(Ký, ghi rõ họ tên)</em><br><br><br><br><br>
-            <strong>Thư ký tòa soạn</strong>
+            <div class="sign-role">THƯ KÝ HỘI ĐỒNG BIÊN TẬP</div>
+            <div class="sign-note">(Ký và ghi rõ họ tên)</div>
+            <div class="sign-space"></div>
+            <div class="sign-name">{{SECRETARY_NAME}}</div>
         </td>
         <td>
-            <strong>TỔNG BIÊN TẬP PHÊ DUYỆT</strong><br>
-            <em>(Ký, đóng dấu, ghi rõ họ tên)</em><br><br><br><br><br>
-            <strong>....................................................</strong>
+            <div class="sign-role">CHỦ TỊCH HỘI ĐỒNG / TỔNG BIÊN TẬP</div>
+            <div class="sign-note">(Ký, đóng dấu hoặc xác nhận điện tử)</div>
+            <div class="sign-space"></div>
+            <div class="sign-name">{{EDITOR_IN_CHIEF_NAME}}</div>
         </td>
     </tr>
 </table>
