@@ -446,10 +446,6 @@
                     </button>
                     <div class="zrd-pg-numbers" id="zrdPgNumbers">
                         <button type="button" class="zrd-pg-num active" data-page="1">1</button>
-                        <button type="button" class="zrd-pg-num" data-page="2">2</button>
-                        <button type="button" class="zrd-pg-num" data-page="3">3</button>
-                        <button type="button" class="zrd-pg-num" data-page="4">4</button>
-                        <button type="button" class="zrd-pg-num" data-page="5">5</button>
                     </div>
                     <button type="button" class="zrd-pg-btn" id="zrdPgNext">
                         <i class="fa fa-angle-right"></i>
