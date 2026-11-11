@@ -96,15 +96,30 @@ class ZaloReviewReminderController
         $avgTurnaroundDays = '0.0';
         try {
             if (class_exists('Illuminate\Database\Capsule\Manager')) {
-                $avgDays = \Illuminate\Database\Capsule\Manager::table('review_assignments as ra')
+                // Tương thích 100% đa CSDL (MySQL, MariaDB, PostgreSQL): Tính toán trực tiếp bằng PHP thay cho hàm trừ ngày SQL
+                $completedRows = \Illuminate\Database\Capsule\Manager::table('review_assignments as ra')
                     ->join('submissions as s', 's.submission_id', '=', 'ra.submission_id')
                     ->where('s.context_id', $contextId)
                     ->whereNotNull('ra.date_completed')
                     ->whereNotNull('ra.date_confirmed')
-                    ->selectRaw('AVG(DATEDIFF(ra.date_completed, ra.date_confirmed)) as avg_days')
-                    ->value('avg_days');
-                if ($avgDays !== null && (float) $avgDays > 0) {
-                    $avgTurnaroundDays = (string) round((float) $avgDays, 1);
+                    ->orderByDesc('ra.date_completed')
+                    ->limit(200)
+                    ->get(['ra.date_completed', 'ra.date_confirmed']);
+
+                $totalDays = 0.0;
+                $validCount = 0;
+                foreach ($completedRows as $cRow) {
+                    $cRow = (array) $cRow;
+                    $completedTime = strtotime((string) ($cRow['date_completed'] ?? ''));
+                    $confirmedTime = strtotime((string) ($cRow['date_confirmed'] ?? ''));
+                    if ($completedTime && $confirmedTime && $completedTime >= $confirmedTime) {
+                        $totalDays += ($completedTime - $confirmedTime) / 86400;
+                        $validCount++;
+                    }
+                }
+
+                if ($validCount > 0) {
+                    $avgTurnaroundDays = (string) round($totalDays / $validCount, 1);
                 }
             }
         } catch (\Throwable $e) {

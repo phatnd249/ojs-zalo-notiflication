@@ -27,11 +27,11 @@ class ZaloOutboxTask extends ScheduledTask
             return false;
         }
 
-        $rows = ZaloOutboxRepository::claimBatch(10);
+        $rows = ZaloOutboxRepository::claimBatch(20);
         $sent = 0;
         $failed = 0;
         $released = 0;
-        $deadline = microtime(true) + 20;
+        $deadline = microtime(true) + 45;
 
         foreach ($rows as $index => $row) {
             if (microtime(true) >= $deadline) {
@@ -99,9 +99,9 @@ class ZaloOutboxTask extends ScheduledTask
                     break;
                 }
 
-                // Giãn cách an toàn (pacing) giữa các tin gửi liên tiếp: 1.0s - 1.5s
+                // Giãn cách an toàn (pacing) giữa các tin gửi liên tiếp: 0.3s - 0.5s (ngừa spam burst nhưng không làm nghẽn worker)
                 if ($index < count($rows) - 1) {
-                    usleep(mt_rand(1000000, 1500000));
+                    usleep(mt_rand(300000, 500000));
                 }
             } catch (\Throwable $e) {
                 ZaloOutboxRepository::markFailed($outboxId, $attempts, 'Lỗi worker: ' . $e->getMessage());

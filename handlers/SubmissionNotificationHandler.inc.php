@@ -309,8 +309,12 @@ class SubmissionNotificationHandler extends StageChangeHandler
                 if (!empty($authorPhones)) {
                     $authorMsg = MessageHelper::buildMessage($authorTemplate, $data);
                     $authorStatus = ZaloApiClient::sendToPhones($authorMsg, $botId, $apiKey, $authorPhones, 'SUBMISSION_AUTHOR', $contextId);
-                    ActivityLogger::logZaloResult($submissionId, $title, $authorStatus, "Gửi tác giả (Nộp bài): " . implode(',', $authorPhones));
-                    self::writeDebug("handleSubmission #{$submissionId}: Đã gửi Zalo cho Tác giả (" . implode(',', $authorPhones) . ") - Status: {$authorStatus}");
+                    $maskedAuthorPhones = array_map(function ($p) {
+                        return ZaloNotificationPlugin::maskPhone($p);
+                    }, $authorPhones);
+                    $maskedStr = implode(', ', $maskedAuthorPhones);
+                    ActivityLogger::logZaloResult($submissionId, $title, $authorStatus, "Gửi tác giả (Nộp bài): " . $maskedStr);
+                    self::writeDebug("handleSubmission #{$submissionId}: Đã gửi Zalo cho Tác giả (" . $maskedStr . ") - Status: {$authorStatus}");
                 }
             }
 

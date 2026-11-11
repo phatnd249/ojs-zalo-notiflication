@@ -308,6 +308,27 @@ class ZaloOutboxRepository
         return $results;
     }
 
+    /**
+     * Đếm số lượng tin nhắn pending bị quá hạn chờ (stale pending) cần cảnh báo.
+     */
+    public static function getStalePendingCount(int $contextId, int $staleSeconds = 900): int
+    {
+        if (!self::ensureSchema()) {
+            return 0;
+        }
+
+        try {
+            $staleCutoff = date('Y-m-d H:i:s', time() - max(60, $staleSeconds));
+            return (int) Capsule::table(self::TABLE)
+                ->where('context_id', $contextId)
+                ->where('status', 'pending')
+                ->where('available_at', '<', $staleCutoff)
+                ->count();
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
     public static function retryItem(int $outboxId, int $contextId): bool
     {
         if (!self::ensureSchema()) {

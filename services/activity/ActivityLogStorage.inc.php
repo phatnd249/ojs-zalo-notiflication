@@ -70,15 +70,37 @@ class ActivityLogStorage
             return;
         }
 
-        $rotated = self::getRotatedLogFiles($logFile);
-        if (!empty($rotated)) {
-            krsort($rotated, SORT_NUMERIC);
-            foreach ($rotated as $index => $source) {
-                @rename($source, $logFile . '.' . ($index + 1));
-            }
+        // Chống Race Condition khi xoay log: Sử dụng file khóa độc quyền không chặn (LOCK_EX | LOCK_NB)
+        $lockFile = $logFile . '.rotate.lock';
+        $lockHandle = @fopen($lockFile, 'c+');
+        if (!$lockHandle) {
+            return;
         }
 
-        @rename($logFile, $logFile . '.1');
+        if (!@flock($lockHandle, LOCK_EX | LOCK_NB)) {
+            fclose($lockHandle);
+            return;
+        }
+
+        try {
+            clearstatcache(true, $logFile);
+            if (!file_exists($logFile) || filesize($logFile) < self::MAX_LOG_SIZE) {
+                return;
+            }
+
+            $rotated = self::getRotatedLogFiles($logFile);
+            if (!empty($rotated)) {
+                krsort($rotated, SORT_NUMERIC);
+                foreach ($rotated as $index => $source) {
+                    @rename($source, $logFile . '.' . ($index + 1));
+                }
+            }
+
+            @rename($logFile, $logFile . '.1');
+        } finally {
+            @flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
+        }
     }
 
     /**

@@ -820,7 +820,7 @@ class ZaloNotificationPlugin extends GenericPlugin
 
             case 'downloadReport':
                 ZaloReviewReminderController::handleDownloadReport($this, $request);
-                return new JSONMessage(true);
+                exit;
 
             case 'saveTemplates':
                 if (!$this->isValidWriteRequest($request)) {

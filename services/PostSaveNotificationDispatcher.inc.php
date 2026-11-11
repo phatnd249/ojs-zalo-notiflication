@@ -188,6 +188,9 @@ class PostSaveNotificationDispatcher
                 $callback();
             } catch (\Throwable $e) {
                 self::debug('Lỗi dispatcher hậu lưu: ' . $e->getMessage());
+                if (class_exists('ActivityLogger')) {
+                    ActivityLogger::logError('DispatcherFlush', 'Lỗi dispatcher hậu lưu: ' . $e->getMessage(), 0, $e);
+                }
             }
         }
         self::$flushing = false;

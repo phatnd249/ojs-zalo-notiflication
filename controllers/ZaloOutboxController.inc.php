@@ -34,16 +34,7 @@ class ZaloOutboxController
             $outboxRetentionDays = 30;
         }
 
-        $stalePendingCount = 0;
-        try {
-            $staleCutoff = date('Y-m-d H:i:s', time() - 900);
-            $stalePendingCount = Capsule::table('zalo_notification_outbox')
-                ->where('context_id', $contextId)
-                ->where('status', 'pending')
-                ->where('available_at', '<', $staleCutoff)
-                ->count();
-        } catch (\Throwable $ignored) {
-        }
+        $stalePendingCount = ZaloOutboxRepository::getStalePendingCount($contextId, 900);
         $hasStalePending = ($stalePendingCount > 0);
 
         $templateMgr = TemplateManager::getManager($request);

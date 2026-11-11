@@ -101,23 +101,72 @@ class ZaloActivityLogController
         }
 
         $logFileLocation = ActivityLogger::getLogFileLocation($contextId);
-        $entries = ActivityLogger::getRecentEntries(PHP_INT_MAX, $filterType, $contextId);
-        $content = '';
-        foreach (array_reverse($entries) as $entry) {
-            $content .= json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . PHP_EOL;
-        }
         $filename = $filterType
             ? preg_replace('/[^A-Z0-9_]/', '_', $filterType) . '_' . basename($logFileLocation)
             : basename($logFileLocation);
 
         header('Content-Description: File Transfer');
-        header('Content-Type: text/plain');
+        header('Content-Type: text/plain; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Expires: 0');
-        header('Cache-Control: must-revalidate');
+        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
         header('Pragma: public');
-        header('Content-Length: ' . strlen($content));
-        echo $content;
+        header('Content-Transfer-Encoding: binary');
+
+        // Tắt bộ đệm đầu ra để giải phóng bộ nhớ (RAM < 2MB khi stream)
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        $logFile = ActivityLogger::getLogFilePath($contextId);
+        ActivityLogStorage::enforceRetention($logFile, $contextId);
+        $logFiles = ActivityLogger::getLogFiles($logFile, true);
+
+        $maxExportLines = (int) ($request->getUserVar('limit') ?: 10000);
+        if ($maxExportLines <= 0) {
+            $maxExportLines = 10000;
+        }
+
+        $output = fopen('php://output', 'w');
+        $exportedCount = 0;
+
+        foreach ($logFiles as $file) {
+            if (!file_exists($file)) {
+                continue;
+            }
+            $handle = @fopen($file, 'r');
+            if (!$handle) {
+                continue;
+            }
+
+            while (($line = fgets($handle)) !== false) {
+                $line = trim($line);
+                if ($line === '') {
+                    continue;
+                }
+
+                if ($filterType !== null) {
+                    $entry = json_decode($line, true);
+                    if (!is_array($entry) || ($entry['type'] ?? '') !== $filterType) {
+                        continue;
+                    }
+                    $entry = ActivityLogger::sanitizeUtf8($entry);
+                    $line = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+                }
+
+                fwrite($output, $line . PHP_EOL);
+                $exportedCount++;
+                if ($exportedCount >= $maxExportLines) {
+                    fclose($handle);
+                    break 2;
+                }
+            }
+            fclose($handle);
+        }
+
+        if (is_resource($output)) {
+            fclose($output);
+        }
         exit;
     }
 }

@@ -38,16 +38,38 @@ class ZaloDebugLogger
             return;
         }
 
-        $oldest = $debugFile . '.' . self::ROTATED_FILES;
-        if (file_exists($oldest)) {
-            @unlink($oldest);
+        // Chống Race Condition khi xoay log: Sử dụng file khóa độc quyền không chặn (LOCK_EX | LOCK_NB)
+        $lockFile = $debugFile . '.rotate.lock';
+        $lockHandle = @fopen($lockFile, 'c+');
+        if (!$lockHandle) {
+            return;
         }
-        for ($i = self::ROTATED_FILES - 1; $i >= 1; $i--) {
-            $source = $debugFile . '.' . $i;
-            if (file_exists($source)) {
-                @rename($source, $debugFile . '.' . ($i + 1));
+
+        if (!@flock($lockHandle, LOCK_EX | LOCK_NB)) {
+            fclose($lockHandle);
+            return;
+        }
+
+        try {
+            clearstatcache(true, $debugFile);
+            if (!file_exists($debugFile) || filesize($debugFile) < self::MAX_SIZE) {
+                return;
             }
+
+            $oldest = $debugFile . '.' . self::ROTATED_FILES;
+            if (file_exists($oldest)) {
+                @unlink($oldest);
+            }
+            for ($i = self::ROTATED_FILES - 1; $i >= 1; $i--) {
+                $source = $debugFile . '.' . $i;
+                if (file_exists($source)) {
+                    @rename($source, $debugFile . '.' . ($i + 1));
+                }
+            }
+            @rename($debugFile, $debugFile . '.1');
+        } finally {
+            @flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
         }
-        @rename($debugFile, $debugFile . '.1');
     }
 }

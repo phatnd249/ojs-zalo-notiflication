@@ -64,9 +64,24 @@ class ActivityLogReader
 
         $logFile = ActivityLogger::getLogFilePath($contextId);
         ActivityLogStorage::enforceRetention($logFile, $contextId);
-        $logFiles = ActivityLogger::getLogFiles($logFile, true);
-        if (empty($logFiles)) {
+        $allFiles = ActivityLogger::getLogFiles($logFile, true);
+        if (empty($allFiles)) {
             return $stats;
+        }
+
+        // Tối ưu hóa: Chỉ quét file log hiện hành và các file xoay có mtime >= ngày cần thống kê
+        $logFiles = [];
+        foreach ($allFiles as $file) {
+            if ($file === $logFile) {
+                $logFiles[] = $file;
+                continue;
+            }
+            if (file_exists($file) && date('Y-m-d', filemtime($file)) >= $date) {
+                $logFiles[] = $file;
+            }
+        }
+        if (empty($logFiles)) {
+            $logFiles = [$logFile];
         }
 
         foreach ($logFiles as $file) {

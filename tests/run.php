@@ -21,6 +21,7 @@ $tests = [
     'submissions_dashboard_tab_test.php',
     'security_authorization_rate_limit_test.php',
     'excel_report_export_test.php',
+    'remediation_stability_test.php',
 ];
 
 foreach ($tests as $test) {
